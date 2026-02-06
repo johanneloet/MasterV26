@@ -45,7 +45,7 @@ def fix_time_muse_hz(df_list, index_file, file_path, frequency):
 
     df.to_csv(f"{file_path.rstrip('.txt').rstrip('.csv')}_new_time_hz.csv")
     
-    return "Time is fixed with hz and new files made"
+    return f"{file_path.rstrip('.txt').rstrip('.csv')}_new_time_hz.csv"
 
 
 
