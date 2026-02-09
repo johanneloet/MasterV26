@@ -144,18 +144,82 @@ def get_start_stop_times_from_peaks(df, peaks, activity_name, num_reps = 6,time_
     return start_stop_times_reps, rep_intervals_df
 
 
-# def read_and_apply_rep_ids(
-#     rep_activity_list : list, 
-#     static_activity_list : list, 
-#     data_csv_path_list : list,
-#     lower_sample_lim_muse : int,
-    
-#     """_summary_
+def assign_rep_ids(sensor_dfs, output_dir, numbered_labels):
+    valid_dfs = {}
+    skipped = []
 
-#     Args:
-#         rep_activity_list (list): list of activities that are performed in repetitions, and therefore have variable lengths.
-#         static_activity_list (list): list of static activities 
-#         data_csv_path_list (list): _description_
-#         lower_sample_lim_muse.
-#     """
+    # Validate rep_id presence
+    for name, df in sensor_dfs.items():
+        if "rep_id" not in df.columns:
+            print(f"⚠️ WARNING: '{name}' skipped (missing 'rep_id' column)")
+            skipped.append(name)
+        else:
+            valid_dfs[name] = df
+    
+
+    if not valid_dfs:
+        print("❌ No valid dataframes to process. Exiting.")
+        return sensor_dfs
+
+    dfs = valid_dfs.values()
+
+    ## Clear rep_id for rows that are NOT base activities
+    numbered_pattern = "|".join(numbered_labels)
+
+    for df in dfs:
+        mask = df["label"].str.contains(numbered_pattern, case=False, na=False)
+        df.loc[~mask, "rep_id"] = None
+
+    # Use one dataframe to get activities
+    activities = next(iter(dfs))["label"].unique().tolist()
+    print("Activities:", activities)
+
+    for activity in activities:
+        # handle labels that already have assigned rep ids in their label.
+        if any(base in activity.lower() for base in numbered_labels):
+            for df in dfs:
+                mask = df["label"].str.contains(numbered_pattern, case=False, na=False)
+
+                df.loc[mask, "label"] = (
+                    df.loc[mask, "label"]
+                    .str.extract(
+                        r"(push|pull|drag|stairs_up|stairs_down)",
+                        expand=False
+                    )
+                    .str.lower()
+                )
+
+            print(f"✅ Normalized activity labels for movement '{activity}', rep_id column has not been altered (expected).")
+
+        else:
+            rep_start_stop_time_path = (
+                output_dir / f"start_stop_rep_times_{activity}.csv"
+            )
+            try:
+                start_stop_df = pd.read_csv(rep_start_stop_time_path)
+            except FileNotFoundError:
+                print(f"⚠️ WARNING: Missing CSV for activity '{activity}', skipping")
+                continue
+
+            for _, rep in start_stop_df.iterrows():
+                rep_id = rep["rep_id"]
+                start_time = rep["start_time"]
+                stop_time = rep["stop_time"]
+
+                for df in dfs:
+                    mask = (
+                        (df["label"] == activity)
+                        & (df["ReconstructedTime"] >= start_time)
+                        & (df["ReconstructedTime"] < stop_time)
+                    )
+                    df.loc[mask, "rep_id"] = rep_id
+
+            print(f"✅ Assigned rep_ids for {activity}")
+
+    for name, df in valid_dfs.items():
+        save_path = output_dir / f"{name}_with_rep_ids.csv"
+        df.to_csv(save_path, index=False)
+        print(f"💾 Saved: {save_path}")
+
+    return sensor_dfs
     
