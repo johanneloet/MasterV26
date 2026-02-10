@@ -1,7 +1,7 @@
 """
 Code to remove undesired columns such as 'timestamp' and 'unnamed'. Also rename the Fsr-columns to the corrects ones.
 """
-from get_paths import get_test_file_paths
+from feature_extraction.get_paths import get_test_file_paths
 import pandas as pd 
 
 FILES = get_test_file_paths()
@@ -45,41 +45,74 @@ FSR_MAPPING_RIGHT = {
 }
 
 
-def clean_and_rename_columns(arm_path, back_path, left_path, right_path):
+def clean_and_rename_columns(
+    left_arm_path=None, 
+    right_arm_path=None, 
+    upper_back_path=None, 
+    lower_back_path=None, 
+    left_fsr_path=None, 
+    right_fsr_path=None
+    ):
     """
     Removes columns containing 'timestamp' or 'unnamed' (case-insensitive),
     and renames FSR columns for left/right insoles using mapping dictionaries.
     Returns the cleaned DataFrames.
     """
-    # Load data
-    df_arm = pd.read_csv(arm_path)
-    df_back = pd.read_csv(back_path)
-    df_left = pd.read_csv(left_path)
-    df_right = pd.read_csv(right_path)
 
-    # Function to drop timestamp/unnamed columns
+    # Helper to drop unwanted columns
     def _drop_unwanted(df):
         drop_cols = [c for c in df.columns if 'timestamp' in c.lower() or 'unnamed' in c.lower()]
         return df.drop(columns=drop_cols, errors='ignore')
 
-    # Clean columns
-    df_arm = _drop_unwanted(df_arm)
-    df_back = _drop_unwanted(df_back)
-    df_left = _drop_unwanted(df_left)
-    df_right = _drop_unwanted(df_right)
+    # Map paths to sensor names
+    sensor_paths = {
+        "left_arm": left_arm_path,
+        "right_arm": right_arm_path,
+        "upper_back": upper_back_path,
+        "lower_back": lower_back_path,
+        "left_fsr": left_fsr_path,
+        "right_fsr": right_fsr_path
+    }
 
-    # Rename FSR columns
-    df_left = df_left.rename(columns=FSR_MAPPING_LEFT)
-    df_right = df_right.rename(columns=FSR_MAPPING_RIGHT)
+    cleaned_dfs = {}
 
-    return df_arm, df_back, df_left, df_right
+    for sensor, path in sensor_paths.items():
+        if path is None:
+            print(f"⚠️ No file provided for {sensor}, skipping...")
+            continue
+
+        # Load CSV
+        df = pd.read_csv(path)
+        df = _drop_unwanted(df)
+
+        # Rename FSR columns if applicable
+        if sensor == "left_fsr":
+            df = df.rename(columns=FSR_MAPPING_LEFT)
+        elif sensor == "right_fsr":
+            df = df.rename(columns=FSR_MAPPING_RIGHT)
+
+        cleaned_dfs[sensor] = df
+
+    return cleaned_dfs
 
 if __name__ == '__main__':
     for test_id, paths in FILES.items():
-        if test_id == 'test_6': #redo test_6 only
-            arm_cleaned, back_cleaned, left_cleaned, right_cleaned = clean_and_rename_columns(paths['arm'], paths['back'], paths['left'], paths['right'])
-            
-            arm_cleaned.to_csv(paths['arm'].replace('.csv', '_cleaned.csv'))
-            back_cleaned.to_csv(paths['back'].replace('.csv', '_cleaned.csv'))
-            left_cleaned.to_csv(paths['left'].replace('.csv', '_cleaned.csv'))
-            right_cleaned.to_csv(paths['right'].replace('.csv', '_cleaned.csv'))
+        if test_id == 'prelim_1':  # redo only a single test - fill in the name here
+            # clean files
+            cleaned_dfs = clean_and_rename_columns(
+                left_arm_path=paths.get('left_arm'),
+                right_arm_path=paths.get('right_arm'),
+                upper_back_path=paths.get('upper_back'),
+                lower_back_path=paths.get('lower_back'),
+                left_fsr_path=paths.get('left_fsr'),
+                right_fsr_path=paths.get('right_fsr')
+            )
+
+            # save any cleaned DataFrames that were returned, ignore nonetypes
+            for sensor, df in cleaned_dfs.items():
+                orig_path = paths.get(sensor)
+                if orig_path is None:
+                    continue 
+                cleaned_path = orig_path.replace('.csv', '_cleaned.csv')
+                df.to_csv(cleaned_path, index=False)
+                print(f"💾 Saved cleaned {sensor} to {cleaned_path}")

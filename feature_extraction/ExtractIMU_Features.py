@@ -414,7 +414,7 @@ def ExtractIMU_Features(imu_data, sensor_name, window_length, norm_IMU, fs, HDR=
 
 
 
-def ExtractIMU_features_repetitions_based(imu_data, sensor_name, window_length, norm_IMU, fs, HDR=False, replace_acc_w_HDR = False, time_only=False, freq_only=False, target_num_samples = 2800):
+def ExtractIMU_features_repetitions_based(imu_data, sensor_name, fs, norm_IMU=False, HDR=False, replace_acc_w_HDR = False, time_only=False, freq_only=False, target_num_samples = 2800):
     if not isinstance(imu_data, pd.DataFrame):
         imu_data = pd.read_csv(imu_data)
         

@@ -121,6 +121,14 @@ def get_test_file_paths():
             "back" : r"C:\Users\Bruker\Master25_code\Master25\Data\sensor_test_files_johanne\test_20\Muse_E2511_GREY-back_new_time_hz_labeled_no_idle_median_filter_add_rep_id_ppsorted_cleaned.csv",
             "left" : r"C:\Users\Bruker\Master25_code\Master25\Data\sensor_test_files_johanne\test_20\mitch_B0308-left-big_del_end_dupli_new_time_labeled_no_idle_median_filter_drop_imu_add_rep_id_ppsorted_cleaned.csv",
             "right": r"C:\Users\Bruker\Master25_code\Master25\Data\sensor_test_files_johanne\test_20\mitch_B0510-right-big_del_end_dupli_new_time_labeled_no_idle_median_filter_drop_imu_add_rep_id_ppsorted_cleaned.csv",
+         },
+         "prelim_1" : {
+             "left_arm" : r"C:\Users\Bruker\Data_msc26_prelim\prelim_1\left_arm_with_rep_ids_cleaned.csv",
+             "right_arm" : r"C:\Users\Bruker\Data_msc26_prelim\prelim_1\right_arm_with_rep_ids_cleaned.csv",
+             "upper_back" : r"C:\Users\Bruker\Data_msc26_prelim\prelim_1\upper_back_with_rep_ids_cleaned.csv", 
+             "lower_back" : r"C:\Users\Bruker\Data_msc26_prelim\prelim_1\lower_back_with_rep_ids_cleaned.csv",
+             "left_fsr" : r"C:\Users\Bruker\Data_msc26_prelim\prelim_1\left_sole_with_rep_ids_cleaned.csv",
+             "right_fsr" : r"C:\Users\Bruker\Data_msc26_prelim\prelim_1\right_sole_with_rep_ids_cleaned.csv",
          }
          
          
@@ -150,6 +158,7 @@ def get_test_folder_paths():
         "test_18": r"C:\Users\Bruker\Master25_code\Master25\Data\sensor_test_files_johanne\test_18",
         "test_19": r"C:\Users\Bruker\Master25_code\Master25\Data\sensor_test_files_johanne\test_19",
         "test_20": r"C:\Users\Bruker\Master25_code\Master25\Data\sensor_test_files_johanne\test_20",
+        "prelim_1": r"C:\Users\Bruker\Data_msc26_prelim\prelim_1",
     }
     return folders
 
