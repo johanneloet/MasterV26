@@ -1,14 +1,15 @@
 import pandas as pd
 
-from ExtractIMU_Features import ExtractIMU_Features, ExtractIMU_features_repetitions_based
-from ExtractPressure_Features import ExtractPressure_Features, ExtractPressure_Features_repetitions_based
-from get_paths import get_test_file_paths, get_one_foler_path
-from create_feature_windows import drop_last_for_label
+from feature_extraction.ExtractIMU_Features import ExtractIMU_Features, ExtractIMU_features_repetitions_based
+from feature_extraction.ExtractPressure_Features import ExtractPressure_Features, ExtractPressure_Features_repetitions_based
+from feature_extraction.get_paths import get_test_file_paths, get_one_foler_path
+from feature_extraction.create_feature_windows import drop_last_for_label
 import numpy as np
 from scipy.signal import resample_poly
 from fractions import Fraction
 import time
 from collections import Counter
+from pathlib import Path
 
 
 # Description of module:
@@ -22,6 +23,7 @@ from collections import Counter
 
 def run_feature_extraction(
     output_dir,
+    test_id,
     right_arm_df=None,
     left_arm_df=None,
     lower_back_df=None,
@@ -30,7 +32,8 @@ def run_feature_extraction(
     right_fsr_df=None,
     expanded_fsr=False,
 ):
-    if right_arm_df == None or lower_back_df == None or left_fsr_df == None or right_fsr_df == None:
+    print("Starting...")
+    if right_arm_df is None or lower_back_df is None or left_fsr_df is None or right_fsr_df is None:
         print("!!WARNING!! Data file [right arm, lower back, left sole or right sole] is not provided.")
         answer = input("Was this intentional? (y/n): ").strip().lower()
         if answer == "n":
@@ -39,31 +42,31 @@ def run_feature_extraction(
         else:
             print("Continuing...")
     
-    if right_arm_df:
+    if right_arm_df is not None:
         feat_muse_rarm, window_labels_rarm = ExtractIMU_features_repetitions_based(right_arm_df, "R_Arm", fs=800)
     else:
         feat_muse_rarm, window_labels_rarm = None, None
     
         # Left Arm
-    if left_arm_df:
+    if left_arm_df is not None:
         feat_muse_larm, window_labels_larm = ExtractIMU_features_repetitions_based(left_arm_df, "L_Arm", fs=800)
     else:
         feat_muse_larm, window_labels_larm = None, None
 
     # Lower Back
-    if lower_back_df:
+    if lower_back_df is not None:
         feat_muse_lback, window_labels_lback = ExtractIMU_features_repetitions_based(lower_back_df, "Lower_Back", fs=800)
     else:
         feat_muse_lback, window_labels_lback = None, None
 
     # Upper Back
-    if upper_back_df:
+    if upper_back_df is not None:
         feat_muse_uback, window_labels_uback = ExtractIMU_features_repetitions_based(upper_back_df, "Upper_Back", fs=800)
     else:
         feat_muse_uback, window_labels_uback = None, None
 
     # Left FSR
-    if left_fsr_df:
+    if left_fsr_df is not None:
         if expanded_fsr == False:
             feat_fsr_left, window_labels_fsr_left = ExtractPressure_Features_repetitions_based(left_fsr_df, "Left", mean_fsr=True, fs=100, feature_space='baseline')
         elif expanded_fsr == True:
@@ -72,7 +75,7 @@ def run_feature_extraction(
         feat_fsr_left, window_labels_fsr_left = None, None
 
     # Right FSR
-    if right_fsr_df:
+    if right_fsr_df is not None:
         if expanded_fsr == False:
             feat_fsr_right, window_labels_fsr_right = ExtractPressure_Features_repetitions_based(right_fsr_df, "Right", mean_fsr=True, fs=100, feature_space='baseline')
         elif expanded_fsr == True:
@@ -155,8 +158,8 @@ def run_feature_extraction_for_multiple_tests(expanded_fsr=False, test_ids="All"
             left_arm_path   = paths.get("left_arm")
             lower_back_path = paths.get("lower_back") or paths.get("back")
             upper_back_path = paths.get("upper_back")
-            left_fsr_path   = paths.get("left")
-            right_fsr_path  = paths.get("right")
+            left_fsr_path   = paths.get("left") or paths.get("left_fsr")
+            right_fsr_path  = paths.get("right") or paths.get("right_fsr")
             
             # Load CSVs if files exist
             df_rarm = pd.read_csv(right_arm_path) if right_arm_path else None
@@ -179,12 +182,13 @@ def run_feature_extraction_for_multiple_tests(expanded_fsr=False, test_ids="All"
             # Features are saved to a .csv as a final step in run_feature_extraction.
             all_features = run_feature_extraction(
                 output_dir=feat_dir,
-                right_arm_path=df_rarm,
-                left_arm_path=df_larm,
-                lower_back_path=df_lback,
-                upper_back_path=df_uback,
-                left_fsr_path=df_lfsr,
-                right_fsr_path=df_rfsr,
+                test_id = test_id,
+                right_arm_df=df_rarm,
+                left_arm_df=df_larm,
+                lower_back_df=df_lback,
+                upper_back_df=df_uback,
+                left_fsr_df=df_lfsr,
+                right_fsr_df=df_rfsr,
                 expanded_fsr=expanded_fsr,
             )
 

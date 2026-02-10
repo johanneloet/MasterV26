@@ -7,11 +7,11 @@ from Maria_code.data_analysis.get_Time_Domain_features_of_signal import get_Time
 from Maria_code.data_analysis.get_Freq_Domain_features_of_signal import get_Freq_Domain_features_of_signal
 """
 
-from get_Time_Domain_features_of_signal import get_Time_Domain_features_of_signal
-from get_Freq_Domain_features_of_signal import get_Freq_Domain_features_of_signal
-from fsr_features import per_sample_features, aggregate_per_window, aggregate_per_rep
-from resample_windows import downsample_channel
-from create_feature_windows import build_boundaries
+from feature_extraction.get_Time_Domain_features_of_signal import get_Time_Domain_features_of_signal
+from feature_extraction.get_Freq_Domain_features_of_signal import get_Freq_Domain_features_of_signal
+from feature_extraction.fsr_features import per_sample_features, aggregate_per_window, aggregate_per_rep
+from feature_extraction.resample_windows import downsample_channel
+from feature_extraction.create_feature_windows import build_boundaries
 
 'Based on Royas code for extracting IMU features'
 

@@ -9,10 +9,10 @@ from Maria_code.data_analysis.get_Freq_Domain_features_of_signal import get_Freq
 """
 'Based on the bachelor studens modification of Royas code'
 
-from get_Time_Domain_features_of_signal import get_Time_Domain_features_of_signal
-from get_Freq_Domain_features_of_signal import get_Freq_Domain_features_of_signal
-from resample_windows import downsample_channel
-from create_feature_windows import build_boundaries
+from feature_extraction.get_Time_Domain_features_of_signal import get_Time_Domain_features_of_signal
+from feature_extraction.get_Freq_Domain_features_of_signal import get_Freq_Domain_features_of_signal
+from feature_extraction.resample_windows import downsample_channel
+from feature_extraction.create_feature_windows import build_boundaries
 
 def ExtractIMU_Features(imu_data, sensor_name, window_length, norm_IMU, fs, HDR=False, replace_acc_w_HDR = False, time_only=False, freq_only=False):
     if not isinstance(imu_data, pd.DataFrame):
