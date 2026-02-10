@@ -144,7 +144,7 @@ def get_start_stop_times_from_peaks(df, peaks, activity_name, num_reps = 6,time_
     return start_stop_times_reps, rep_intervals_df
 
 
-def assign_rep_ids(sensor_dfs, output_dir, numbered_labels):
+def assign_rep_ids(sensor_dfs, output_dir, numbered_labels, static_labels=['standing', 'sitting', 'walking', 'neutral_load_left', 'neutral_load_right']):
     valid_dfs = {}
     skipped = []
 
@@ -163,8 +163,8 @@ def assign_rep_ids(sensor_dfs, output_dir, numbered_labels):
 
     dfs = valid_dfs.values()
 
-    ## Clear rep_id for rows that are NOT base activities
-    numbered_pattern = "|".join(numbered_labels)
+    ## Clear rep_id for rows that are not already labeled
+    numbered_pattern = "|".join(numbered_labels + static_labels)
 
     for df in dfs:
         mask = df["label"].str.contains(numbered_pattern, case=False, na=False)
@@ -175,21 +175,26 @@ def assign_rep_ids(sensor_dfs, output_dir, numbered_labels):
     print("Activities:", activities)
 
     for activity in activities:
-        # handle labels that already have assigned rep ids in their label.
-        if any(base in activity.lower() for base in numbered_labels):
-            for df in dfs:
-                mask = df["label"].str.contains(numbered_pattern, case=False, na=False)
+        if activity in static_labels:
+            continue
 
+        # handle labels that already have assigned rep ids in their label.
+        if re.search(r"_\d+$", str(activity).lower()):
+            for df in dfs:
+                mask = df["label"].astype(str).str.lower().eq(str(activity).lower())
+
+                # rep_id = original label
+                df.loc[mask, "rep_id"] = df.loc[mask, "label"]
+
+                # label = base 
                 df.loc[mask, "label"] = (
                     df.loc[mask, "label"]
-                    .str.extract(
-                        r"(push|pull|drag|stairs_up|stairs_down)",
-                        expand=False
-                    )
+                    .astype(str)
+                    .str.extract(r"^(.+?)_\d+$", expand=False)
                     .str.lower()
                 )
 
-            print(f"✅ Normalized activity labels for movement '{activity}', rep_id column has not been altered (expected).")
+            print(f"✅ Normalized numbered label '{activity}' -> base label + rep_id preserved.")
 
         else:
             rep_start_stop_time_path = (
