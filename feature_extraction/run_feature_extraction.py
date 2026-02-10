@@ -21,6 +21,7 @@ from collections import Counter
 # at a later convenince.
 
 def run_feature_extraction(
+    output_dir,
     right_arm_df=None,
     left_arm_df=None,
     lower_back_df=None,
@@ -127,14 +128,26 @@ def run_feature_extraction(
         all_features = pd.concat([features_dict[s] for s in available_sensors], axis=1)
         all_features['label'] = label_dict[available_sensors[0]]  # first sensor's labels
 
-        return all_features, len(available_sensors)
+        sensor_combo_scenario = "_".join(available_sensors)
+            
+        output_filename = f"Features_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+        
+        all_features.to_csv(Path(output_dir) / output_filename)
+
+        return all_features, available_sensors
 
 
-def run_feature_extraction_for_all_tests(expanded_fsr=False, ):
+def run_feature_extraction_for_multiple_tests(expanded_fsr=False, test_ids="All"):
+    """
+    Default behavior: test_ids is set to "All" - runs feature extraction for all test_ids found. Alternatively set test_ids to a list
+    of str corresponding to the test_ids you want to run feature extraction for.
+    """
     file_dict = get_test_file_paths()
     start = time.time()
     
     for test_id, paths in file_dict.items():
+        if test_ids != "All" and test_id not in test_ids:
+            continue
         print(f"\n--- Running feature extraction for {test_id} ---")
         try:
             # Map input files to standardized sensor names
@@ -153,18 +166,19 @@ def run_feature_extraction_for_all_tests(expanded_fsr=False, ):
             df_lfsr = pd.read_csv(left_fsr_path) if left_fsr_path else None
             df_rfsr = pd.read_csv(right_fsr_path) if right_fsr_path else None
             
-            folder = get_one_foler_path(test_id)
-            print(f"Folder to save features: {folder}")
+            feat_dir = get_one_foler_path(test_id)
+            print(f"Directory to save features: {feat_dir}")
             
             # Drop rows where rep_id == None for files that exist
             for df in [df_rarm, df_larm, df_lback, df_uback, df_lfsr, df_rfsr]:
                 if df is not None and "rep_id" in df.columns:
                     df.dropna(subset=["rep_id"], inplace=True)
             
-            # Construct output path
             
             # Run feature extraction with flexible inputs
-            all_features, num_sensors = run_feature_extraction(
+            # Features are saved to a .csv as a final step in run_feature_extraction.
+            all_features = run_feature_extraction(
+                output_dir=feat_dir,
                 right_arm_path=df_rarm,
                 left_arm_path=df_larm,
                 lower_back_path=df_lback,
@@ -173,10 +187,7 @@ def run_feature_extraction_for_all_tests(expanded_fsr=False, ):
                 right_fsr_path=df_rfsr,
                 expanded_fsr=expanded_fsr,
             )
-            
-            output_filename = f"Features_{test_id}_expanded{expanded_fsr}_{num_sensors}sensors.csv"
-            
-            all_features.to_csv()
+
             
             if all_features is None:
                 print(f"Feature extraction failed for {test_id}")
@@ -194,5 +205,12 @@ def run_feature_extraction_for_all_tests(expanded_fsr=False, ):
 
 
 if __name__ == '__main__':
+    # Optionally define which test ids to run feature extraction for
+    run = ['prelim_1']
+
+    # Run with selected settings!
+    run_feature_extraction_for_multiple_tests(expanded_fsr=True, test_ids=run)
+
+    #TODO: configure multiple tests function to be able to account for different feature space configurations.
     
 
