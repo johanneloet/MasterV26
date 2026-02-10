@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import math
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from pathlib import Path
@@ -100,9 +101,55 @@ def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
     plt.tight_layout()
     plt.show()
 
+
+def plot_pca_subplots(scores_df, pairs=None, color_by="label", ncols=3, alpha=0.7):
+    """
+    Plot multiple PCA score plots as subplots.
+
+    pairs: list of tuples like [(1,2), (1,3), ...]
+           If None, defaults to [(1,2), (1,3), (1,4), (1,5), (1,6)]  (5 plots)
+    """
+    if pairs is None:
+        pairs = [(1, i) for i in range(2, 7)]  # PC1 vs PC2..PC6 (5 plots)
+
+    nplots = len(pairs)
+    nrows = math.ceil(nplots / ncols)
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5*ncols, 4*nrows), squeeze=False)
+
+    labels = scores_df[color_by].unique()
+
+    for idx, (pc_x, pc_y) in enumerate(pairs):
+        r, c = divmod(idx, ncols)
+        ax = axes[r][c]
+
+        x_col = f"PC{pc_x}"
+        y_col = f"PC{pc_y}"
+
+        for lab in labels:
+            sub = scores_df[scores_df[color_by] == lab]
+            ax.scatter(sub[x_col], sub[y_col], label=lab, alpha=alpha)
+
+        ax.set_xlabel(x_col)
+        ax.set_ylabel(y_col)
+        ax.set_title(f"{x_col} vs {y_col}")
+
+    # Hide any unused axes
+    for idx in range(nplots, nrows * ncols):
+        r, c = divmod(idx, ncols)
+        axes[r][c].axis("off")
+
+    # One shared legend (cleaner than repeating)
+    handles, labs = axes[0][0].get_legend_handles_labels()
+    fig.legend(handles, labs, loc="upper right", bbox_to_anchor=(0.98, 0.98))
+
+    fig.tight_layout(rect=[0, 0, 0.95, 1])  # leave space for legend
+    plt.show()
+
 if __name__ == '__main__': 
     scores = run_pca_on_dataset()
     plot_pca_scores(scores)
+    plot_pca_subplots(scores)
 
 
 
