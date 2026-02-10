@@ -5,7 +5,7 @@ import pandas as pd
 
 def build_boundaries(
     df: pd.DataFrame,
-    fixed_labels=("standing", "sitting", "walking"),
+    fixed_labels=("standing", "sitting", "walking", "neutral_load_left", "neutral_load_right"),
     fixed_len=2800,
     drop_incomplete=True,
 ):
