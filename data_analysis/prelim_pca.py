@@ -46,7 +46,7 @@ def run_pca_on_dataset(
         if test_id.split('_')[0] in prefixes:
             feature_filename = f"Features_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
             include_csvs.append(Path(folder_path) / feature_filename)
-¨
+
     feature_dfs = []
     for p in include_csvs:
         df = pd.read_csv(p)
@@ -55,7 +55,7 @@ def run_pca_on_dataset(
     combined_features = pd.concat(feature_dfs, ignore_index=True)
 
     y = combined_features["label"]
-    X = combined_features.drop(columns=["label", "rep_id"])
+    X = combined_features.drop(columns=["label"])
     # Remove any non-numeric columns
     X = X.select_dtypes(include="number")
 
@@ -101,7 +101,7 @@ def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
     plt.show()
 
 if __name__ == '__main__': 
-    scores = run_pca_on_dataset()
+    scores = run_pca_on_dataset(expanded_fsr=True)
     plot_pca_scores(scores)
 
 
