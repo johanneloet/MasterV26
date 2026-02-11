@@ -72,7 +72,7 @@ def plot_activity_accelerations_peaks_and_magnitude(
     # Call find_peaks on the NumPy array
     if peak_indices == None:
         local_peak_indices, properties = find_peaks(
-            subset["Accel mag"].to_numpy(), height=1100, distance=1100
+            subset["Accel mag"].to_numpy(), height=height, distance=distance
         )
 
         # Map back to original indices
