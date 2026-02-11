@@ -7,7 +7,7 @@ import time
 from Maria_code.data_analysis.get_Time_Domain_features_of_signal import get_Time_Domain_features_of_signal
 from Maria_code.data_analysis.get_Freq_Domain_features_of_signal import get_Freq_Domain_features_of_signal
 """
-'Based on the bachelor studens modification of Royas code'
+'Based on the bachelor students modification of Royas code'
 
 from feature_extraction.get_Time_Domain_features_of_signal import get_Time_Domain_features_of_signal
 from feature_extraction.get_Freq_Domain_features_of_signal import get_Freq_Domain_features_of_signal

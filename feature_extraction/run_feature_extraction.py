@@ -108,36 +108,36 @@ def run_feature_extraction(
     all_labels = sorted(set(l for s in available_sensors for l in label_dict[s]))
 
     for label in all_labels:
-        # find max count of this label among all sensors
-        max_count = max(Counter(label_dict[s]).get(label, 0) for s in available_sensors)
+        # find min count of this label among all sensors
+        min_count = min(Counter(label_dict[s]).get(label, 0) for s in available_sensors)
         for sensor in available_sensors:
             current_count = Counter(label_dict[sensor]).get(label, 0)
-            while current_count > max_count:
+            while current_count > min_count:
                 # Drop last row for this label (you already have drop_last_for_label)
                 features_dict[sensor], label_dict[sensor] = drop_last_for_label(
                     features_dict[sensor], label_dict[sensor], label
                 )
                 current_count -= 1
 
-        # Check all lengths are equal
-        lengths = [len(features_dict[s]) for s in available_sensors]
-        if len(set(lengths)) > 1:
-            print("STOPPING ... different number of windows across sensors!")
-            for sensor in available_sensors:
-                print(f"  {sensor:12}: {len(features_dict[sensor])}")
-            return None
+    # Check all lengths are equal
+    lengths = [len(features_dict[s]) for s in available_sensors]
+    if len(set(lengths)) > 1:
+        print("STOPPING ... different number of windows across sensors!")
+        for sensor in available_sensors:
+            print(f"  {sensor:12}: {len(features_dict[sensor])}")
+        return None
 
-        # Combine features
-        all_features = pd.concat([features_dict[s] for s in available_sensors], axis=1)
-        all_features['label'] = label_dict[available_sensors[0]]  # first sensor's labels
+    # Combine features
+    all_features = pd.concat([features_dict[s] for s in available_sensors], axis=1)
+    all_features['label'] = label_dict[available_sensors[0]]  # first sensor's labels
 
-        sensor_combo_scenario = "_".join(available_sensors)
-            
-        output_filename = f"Features_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+    sensor_combo_scenario = "_".join(available_sensors)
         
-        all_features.to_csv(Path(output_dir) / output_filename)
+    output_filename = f"Features_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+    
+    all_features.to_csv(Path(output_dir) / output_filename)
 
-        return all_features, available_sensors
+    return all_features
 
 
 def run_feature_extraction_for_multiple_tests(expanded_fsr=False, test_ids="All"):

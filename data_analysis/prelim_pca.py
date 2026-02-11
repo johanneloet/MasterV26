@@ -81,7 +81,7 @@ def run_pca_on_dataset(
     # add labels back in to be able to plot color coded by label later. 
     scores_df["label"] = y.values
 
-    return scores_df
+    return scores_df, pca
 
 
 def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
@@ -90,9 +90,19 @@ def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
 
     plt.figure(figsize=(8,6))
 
-    for label in scores_df["label"].unique():
+    labels = sorted(scores_df["label"].unique())
+    cmap = plt.get_cmap("tab20", len(labels))
+    color_map = {lab: cmap(i) for i, lab in enumerate(labels)}
+
+    for label in labels:
         subset = scores_df[scores_df["label"] == label]
-        plt.scatter(subset[x_col], subset[y_col], label=label, alpha=0.7)
+        plt.scatter(
+            subset[x_col],
+            subset[y_col],
+            label=label,
+            alpha=0.7,
+            color=color_map[label]
+        )
 
     plt.xlabel(x_col)
     plt.ylabel(y_col)
@@ -101,23 +111,20 @@ def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
     plt.tight_layout()
     plt.show()
 
-
 def plot_pca_subplots(scores_df, pairs=None, color_by="label", ncols=3, alpha=0.7):
-    """
-    Plot multiple PCA score plots as subplots.
+    import math
 
-    pairs: list of tuples like [(1,2), (1,3), ...]
-           If None, defaults to [(1,2), (1,3), (1,4), (1,5), (1,6)]  (5 plots)
-    """
     if pairs is None:
-        pairs = [(1, i) for i in range(2, 7)]  # PC1 vs PC2..PC6 (5 plots)
+        pairs = [(1, i) for i in range(2, 7)]
 
     nplots = len(pairs)
     nrows = math.ceil(nplots / ncols)
 
     fig, axes = plt.subplots(nrows, ncols, figsize=(5*ncols, 4*nrows), squeeze=False)
 
-    labels = scores_df[color_by].unique()
+    labels = sorted(scores_df[color_by].unique())
+    cmap = plt.get_cmap("tab20", len(labels))
+    color_map = {lab: cmap(i) for i, lab in enumerate(labels)}
 
     for idx, (pc_x, pc_y) in enumerate(pairs):
         r, c = divmod(idx, ncols)
@@ -128,38 +135,80 @@ def plot_pca_subplots(scores_df, pairs=None, color_by="label", ncols=3, alpha=0.
 
         for lab in labels:
             sub = scores_df[scores_df[color_by] == lab]
-            ax.scatter(sub[x_col], sub[y_col], label=lab, alpha=alpha)
+            ax.scatter(
+                sub[x_col],
+                sub[y_col],
+                label=lab,
+                alpha=alpha,
+                color=color_map[lab]
+            )
 
         ax.set_xlabel(x_col)
         ax.set_ylabel(y_col)
         ax.set_title(f"{x_col} vs {y_col}")
 
-    # Hide any unused axes
+    # Hide unused axes
     for idx in range(nplots, nrows * ncols):
         r, c = divmod(idx, ncols)
         axes[r][c].axis("off")
 
-    # One shared legend (cleaner than repeating)
+    # Shared legend
     handles, labs = axes[0][0].get_legend_handles_labels()
-    fig.legend(handles, labs, loc="upper right", bbox_to_anchor=(0.98, 0.98))
+    fig.legend(handles, labs, bbox_to_anchor=(0.98, 0.98))
 
-    fig.tight_layout(rect=[0, 0, 0.95, 1])  # leave space for legend
+    fig.tight_layout(rect=[0, 0, 0.95, 1])
+    plt.show()
+    
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_scree(pca, max_pcs=None):
+    """
+    Plot scree plot (explained variance and cumulative variance).
+
+    Args:
+        pca: fitted sklearn PCA object
+        max_pcs (int, optional): limit number of PCs shown
+    """
+    explained_var = pca.explained_variance_ratio_
+
+    if max_pcs is not None:
+        explained_var = explained_var[:max_pcs]
+
+    pcs = np.arange(1, len(explained_var) + 1)
+    cumulative_var = np.cumsum(explained_var)
+
+    plt.figure(figsize=(8, 5))
+
+    plt.bar(
+        pcs,
+        explained_var,
+        alpha=0.7,
+        label="Individual explained variance"
+    )
+    plt.plot(
+        pcs,
+        cumulative_var,
+        marker="o",
+        color="black",
+        label="Cumulative explained variance"
+    )
+
+    plt.xlabel("Principal Component")
+    plt.ylabel("Explained Variance Ratio")
+    plt.title("Scree Plot")
+    plt.xticks(pcs)
+    plt.ylim(0, 1.05)
+    plt.legend()
+    plt.tight_layout()
     plt.show()
 
+
 if __name__ == '__main__': 
-    scores = run_pca_on_dataset(expanded_fsr=True)
-    plot_pca_scores(scores)
+    scores, pca = run_pca_on_dataset(expanded_fsr=True)
+    #plot_scree(pca)
+    #plot_pca_scores(scores, pc_x=2, pc_y=3)
     plot_pca_subplots(scores)
 
-
-
-
-
-
-
-    
-    
-
-    
 
 

@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from scipy.signal import find_peaks
+import re
 
 def plot_activity_accelerations_peaks_and_magnitude(
         df,

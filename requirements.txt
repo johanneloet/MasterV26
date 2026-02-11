@@ -3,4 +3,4 @@ pandas
 numpy
 scipy
 ipykernel
-sklearn
+scikit-learn
