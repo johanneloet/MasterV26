@@ -3,11 +3,10 @@ import numpy as np
 import re
 
 
-
 def check_irregular_timejums(cleaned_path):
     df = pd.read_csv(cleaned_path, sep=",")
     # Calculate timestamp differences
-    timestamp_diffs = df['Timestamp'].diff()
+    timestamp_diffs = df["Timestamp"].diff()
 
     # Define thresholds for anomaly detection (100 Hz => ~10ms interval)
     mean_interval = timestamp_diffs[1:].mean()
@@ -16,29 +15,30 @@ def check_irregular_timejums(cleaned_path):
     threshold_lower = mean_interval - 3 * std_interval
 
     # Identify jumps or outliers
-    jumps = df[(timestamp_diffs > threshold_upper) | (timestamp_diffs < threshold_lower)]
+    jumps = df[
+        (timestamp_diffs > threshold_upper) | (timestamp_diffs < threshold_lower)
+    ]
 
     # Calculate difference between consecutive timestamps
-    df['Timestamp_Diff'] = df['Timestamp'].diff()
+    df["Timestamp_Diff"] = df["Timestamp"].diff()
 
     # Identify rows where timestamp jumps back (diff < 0)
-    jumps_back = df[df['Timestamp_Diff'] < 0]
+    jumps_back = df[df["Timestamp_Diff"] < 0]
 
     # Return summary and some example rows
-    return{
+    return {
         "mean_interval_ms": mean_interval,
         "std_dev_ms": std_interval,
         "num_jumps": len(jumps),
         "num_jumps_back": len(jumps_back),
         "jumps_back": jumps_back[["Timestamp"]],
-        "example_jumps": jumps[['Timestamp']].head(10)
+        "example_jumps": jumps[["Timestamp"]].head(10),
     }
-
 
 
 def remove_end_duplicates(file_path):
     print("read filepath:", file_path)
-    
+
     if file_path.endswith(".txt"):
         df = pd.read_csv(file_path, delimiter="\t", skiprows=8, decimal=",")
     elif file_path.endswith(".csv"):
@@ -67,25 +67,27 @@ def check_sample(df):
         if df.endswith(".txt"):
             df = pd.read_csv(df, delimiter="\t", skiprows=8, decimal=",")
         elif df.endswith(".csv"):
-            df = pd.read_csv(df) 
-    
+            df = pd.read_csv(df)
+
     sample_num = len(df["Timestamp"])
-    recorded_time = float(df["Timestamp"].iloc[-1])-float(df["Timestamp"][0])
-    recorded_time_sec = recorded_time/1000
-    recorded_time_min = recorded_time/60000
-    print(f"Sample number: {sample_num}\n"
-          f"Recorded time sec: {recorded_time_sec}\n"
-          f"Recorded time min: {recorded_time_min}")
+    recorded_time = float(df["Timestamp"].iloc[-1]) - float(df["Timestamp"][0])
+    recorded_time_sec = recorded_time / 1000
+    recorded_time_min = recorded_time / 60000
+    print(
+        f"Sample number: {sample_num}\n"
+        f"Recorded time sec: {recorded_time_sec}\n"
+        f"Recorded time min: {recorded_time_min}"
+    )
     return sample_num, recorded_time_sec
 
 
 def add_ReconstructedTime(cleaned_filepath, df=None):
     if df is None:
         df = pd.read_csv(cleaned_filepath)
-    
+
     num_samples, recorded_time_sec = check_sample(df)
 
-    df['ReconstructedTime'] = np.linspace(0, recorded_time_sec, num=num_samples)
+    df["ReconstructedTime"] = np.linspace(0, recorded_time_sec, num=num_samples)
 
     output_path = f"{cleaned_filepath.rstrip('.csv')}_new_time.csv"
     df.to_csv(output_path, index=False)
@@ -97,16 +99,40 @@ def fix_sensor_numbers(filepath, df=None):
 
     # Maps for changing numbers
     rename_map_left = {
-        9:1,    10:2,   13:3,   16:4,
-        14:5,   11:6,   12:7,   15:8,
-        3:9,    2:10,   1:11,   5:12,
-        7:13,   4:14,   8:15,   6:16
+        9: 1,
+        10: 2,
+        13: 3,
+        16: 4,
+        14: 5,
+        11: 6,
+        12: 7,
+        15: 8,
+        3: 9,
+        2: 10,
+        1: 11,
+        5: 12,
+        7: 13,
+        4: 14,
+        8: 15,
+        6: 16,
     }
     rename_map_right = {
-        4:1,    8:2,    5:3,    2:4,
-        3:5,    6:6,    7:7,    1:8,
-        14:9,   16:10,  15:11,  13:12,
-        12:13,  9:14,   10:15,  11:16
+        4: 1,
+        8: 2,
+        5: 3,
+        2: 4,
+        3: 5,
+        6: 6,
+        7: 7,
+        1: 8,
+        14: 9,
+        16: 10,
+        15: 11,
+        13: 12,
+        12: 13,
+        9: 14,
+        10: 15,
+        11: 16,
     }
 
     if df is None:
@@ -120,8 +146,10 @@ def fix_sensor_numbers(filepath, df=None):
     elif "right" in filepath:
         rename_map = rename_map_right
     else:
-        raise ValueError("Could not determine sensor type from filename. Include 'small'/'big' and 'left'/'right'.")
-    
+        raise ValueError(
+            "Could not determine sensor type from filename. Include 'small'/'big' and 'left'/'right'."
+        )
+
     # Step 3: Rename FSR columns
     new_columns = []
     for col in df.columns:
@@ -147,7 +175,7 @@ def fix_sensor_numbers(filepath, df=None):
 def run_fix_timestamp_mitch(filepath):
     df_dubli, path_dupli = remove_end_duplicates(filepath)
     print("after removed duplicates:")
-    #check_sample(df_dubli)
+    # check_sample(df_dubli)
 
     df_new_time, path_new_time = add_ReconstructedTime(path_dupli, df_dubli)
 

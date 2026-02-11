@@ -3,11 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
+
 def detect_spikes(file_path):
     df = pd.read_csv(file_path)
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
-    df["acc_mag"] = np.sqrt(df["Axl.X"]**2 + df["Axl.Y"]**2 + df["Axl.Z"]**2)
+    df["acc_mag"] = np.sqrt(df["Axl.X"] ** 2 + df["Axl.Y"] ** 2 + df["Axl.Z"] ** 2)
 
     peaks, _ = find_peaks(df["acc_mag"], height=3000, distance=1000)
 
@@ -16,25 +17,34 @@ def detect_spikes(file_path):
 
 def init_label(df, peaks, file_path):
     df["label"] = "idle"  # default label
-    buffer = 2      # Nuber to be excluded from labeling on each side of peak
-    
+    buffer = 2  # Nuber to be excluded from labeling on each side of peak
+
     for i in range(len(peaks) - 1):
-        start = peaks[i] + buffer + 1   # Exclude the peak
-        end = peaks[i + 1] - buffer - 1 # Exclude the next peak
+        start = peaks[i] + buffer + 1  # Exclude the peak
+        end = peaks[i + 1] - buffer - 1  # Exclude the next peak
         df.loc[start:end, "label"] = f"Activity_{i+1}"
-    
-    df.to_csv(f"{file_path.rstrip('.txt').rstrip('.csv')}_init_labeled.csv", index=False)
+
+    df.to_csv(
+        f"{file_path.rstrip('.txt').rstrip('.csv')}_init_labeled.csv", index=False
+    )
     return df
 
 
 def plot_signal_peaks(df_labeled, peaks, filepath_label=None):
-    
+
     if filepath_label is not None:
         df_labeled = pd.read_csv(filepath_label)
 
     plt.figure(figsize=(15, 5))
-    plt.plot(df_labeled["ReconstructedTime"], df_labeled["Axl.X"], label="Accelerometer X")
-    plt.plot(df_labeled["ReconstructedTime"].iloc[peaks], df_labeled["Axl.X"].iloc[peaks], "rx", label="Detected Spikes")
+    plt.plot(
+        df_labeled["ReconstructedTime"], df_labeled["Axl.X"], label="Accelerometer X"
+    )
+    plt.plot(
+        df_labeled["ReconstructedTime"].iloc[peaks],
+        df_labeled["Axl.X"].iloc[peaks],
+        "rx",
+        label="Detected Spikes",
+    )
 
     # Shade areas based on labels (excluding 'idle')
     unique_labels = df_labeled["label"].unique()
@@ -47,9 +57,11 @@ def plot_signal_peaks(df_labeled, peaks, filepath_label=None):
         if not activity_df.empty:
             start_time = activity_df["ReconstructedTime"].iloc[0]
             end_time = activity_df["ReconstructedTime"].iloc[-1]
-            plt.axvspan(start_time, end_time, alpha=0.2, color=colors(i), label=label, zorder=0)
+            plt.axvspan(
+                start_time, end_time, alpha=0.2, color=colors(i), label=label, zorder=0
+            )
 
-    #plt.legend()
+    # plt.legend()
     plt.title("labeled Segments Between Spikes (Different Colors)")
     plt.xlabel("Time")
     plt.ylabel("Sensor Value")
@@ -68,8 +80,16 @@ def plot_closeups_around_peaks(df, peaks, window_seconds=0.25, sampling_rate=800
         segment = df.iloc[start_idx:end_idx]
 
         plt.figure(figsize=(10, 4))
-        plt.plot(segment["ReconstructedTime"], segment["Axl.X"], label="Axl.X", zorder=1)
-        plt.axvline(df["ReconstructedTime"].iloc[peak], color="red", linestyle="--", label="Peak", zorder=2)
+        plt.plot(
+            segment["ReconstructedTime"], segment["Axl.X"], label="Axl.X", zorder=1
+        )
+        plt.axvline(
+            df["ReconstructedTime"].iloc[peak],
+            color="red",
+            linestyle="--",
+            label="Peak",
+            zorder=2,
+        )
 
         # Shade regions by label
         for label in segment["label"].unique():
@@ -79,7 +99,14 @@ def plot_closeups_around_peaks(df, peaks, window_seconds=0.25, sampling_rate=800
             if not label_segment.empty:
                 start_time = label_segment["ReconstructedTime"].iloc[0]
                 end_time = label_segment["ReconstructedTime"].iloc[-1]
-                plt.axvspan(start_time, end_time, color=colors[label], alpha=0.3, label=label, zorder=0)
+                plt.axvspan(
+                    start_time,
+                    end_time,
+                    color=colors[label],
+                    alpha=0.3,
+                    label=label,
+                    zorder=0,
+                )
 
         plt.title(f"Close-up Around Peak at {df['ReconstructedTime'].iloc[peak]:.3f}s")
         plt.xlabel("Time (s)")
@@ -106,37 +133,43 @@ def extract_activity_windows(df, output_path="activity_windows.csv", exclude_idl
 
         if label != current_label:
             if current_label is not None:
-                activity_windows.append({
-                    "label": current_label,
-                    "Start Time (s)": start_time,
-                    "End Time (s)": prev_time
-                })
+                activity_windows.append(
+                    {
+                        "label": current_label,
+                        "Start Time (s)": start_time,
+                        "End Time (s)": prev_time,
+                    }
+                )
             current_label = label
             start_time = time
         prev_time = time
 
     # Append last activity
     if current_label is not None:
-        activity_windows.append({
-            "label": current_label,
-            "Start Time (s)": start_time,
-            "End Time (s)": prev_time
-        })
+        activity_windows.append(
+            {
+                "label": current_label,
+                "Start Time (s)": start_time,
+                "End Time (s)": prev_time,
+            }
+        )
 
     activity_df = pd.DataFrame(activity_windows)
 
     if exclude_idle:
         activity_df = activity_df[activity_df["label"] != "idle"]
-    
+
     activity_df.to_csv(f"{output_path}/start_stop_segments.csv", index=False)
     print(f"Activity window summary saved to {output_path}")
     return activity_df
 
 
-def apply_corrected_labels(new_time_file, start_stop_csv_path, df=None, rename_map=None):
+def apply_corrected_labels(
+    new_time_file, start_stop_csv_path, df=None, rename_map=None
+):
     if df is None:
         df = pd.read_csv(new_time_file)
-    
+
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
     corrected = pd.read_csv(start_stop_csv_path)
@@ -145,7 +178,7 @@ def apply_corrected_labels(new_time_file, start_stop_csv_path, df=None, rename_m
 
     if rename_map:
         corrected["label"] = corrected["label"].replace(rename_map)
-    
+
     for _, row in corrected.iterrows():
         start_time = row["Start Time (s)"]
         end_time = row["End Time (s)"]
@@ -166,9 +199,11 @@ def apply_corrected_labels(new_time_file, start_stop_csv_path, df=None, rename_m
 def remove_idle(correct_label_filepath, correct_label_df=None):
     if correct_label_df is None:
         correct_label_df = pd.read_csv(correct_label_filepath)
-    
-    correct_label_df = correct_label_df.loc[:, ~correct_label_df.columns.str.contains("^Unnamed")]
-    
+
+    correct_label_df = correct_label_df.loc[
+        :, ~correct_label_df.columns.str.contains("^Unnamed")
+    ]
+
     if "label" not in correct_label_df.columns:
         raise ValueError("The DataFrame must contain a 'label' column.")
 
@@ -186,23 +221,27 @@ def extract_one_activity(filepath, activity, save_file=True):
 
     if "label" not in df.columns:
         raise ValueError("The DataFrame must contain a 'label' column.")
-    
+
     activity_df = df[df["label"] == activity].copy()
     if save_file == True:
-        activity_df.to_csv(f"{filepath.rstrip('.txt').rstrip('.csv')}_{activity}.csv", index=False)
+        activity_df.to_csv(
+            f"{filepath.rstrip('.txt').rstrip('.csv')}_{activity}.csv", index=False
+        )
     return activity_df
 
 
 def extract_pressure_data(filepath, df=None):
     if df is None:
         df = pd.read_csv(filepath)
-    
+
     fsr_columns = [f"Fsr.{str(sensor).zfill(2)}" for sensor in range(1, 17)]
     fsr_data = df[fsr_columns].copy()
     fsr_data.insert(0, "ReconstructedTime", df["ReconstructedTime"], True)
     fsr_data["label"] = df["label"]
 
-    output_path = f"{filepath.rstrip('del_end_dupli_new_time_labeled.csv')}_pressure_labeled.csv"
+    output_path = (
+        f"{filepath.rstrip('del_end_dupli_new_time_labeled.csv')}_pressure_labeled.csv"
+    )
     fsr_data.to_csv(output_path, index=False)
 
     return fsr_data, output_path
@@ -213,13 +252,18 @@ def sort_push_pull(filepath, df=None):
         df = pd.read_csv(filepath)
 
     # Extract push and pull repetitions
-    push_pull_df = df[df["label"].str.startswith("push") | df["label"].str.startswith("pull")].copy()
+    push_pull_df = df[
+        df["label"].str.startswith("push") | df["label"].str.startswith("pull")
+    ].copy()
 
     # Extract label order using rep_id suffix (e.g., push_1 → 1)
-    push_pull_df["rep_index"] = push_pull_df["rep_id"].str.extract(r"_(\d+)").astype(int)
-    
+    push_pull_df["rep_index"] = (
+        push_pull_df["rep_id"].str.extract(r"_(\d+)").astype(int)
+    )
 
-    push_pull_df_sorted = push_pull_df.sort_values(by=["label", "rep_index"]).drop(columns=["rep_index"])
+    push_pull_df_sorted = push_pull_df.sort_values(by=["label", "rep_index"]).drop(
+        columns=["rep_index"]
+    )
 
     other_df = df[~df.index.isin(push_pull_df_sorted.index)]
 
@@ -229,6 +273,7 @@ def sort_push_pull(filepath, df=None):
     df_sorted.to_csv(output_path, index=False)
 
     return df_sorted, output_path
+
 
 """
 sensor_file = ""

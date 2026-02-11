@@ -1,7 +1,13 @@
 import pandas as pd
 
-from feature_extraction.ExtractIMU_Features import ExtractIMU_Features, ExtractIMU_features_repetitions_based
-from feature_extraction.ExtractPressure_Features import ExtractPressure_Features, ExtractPressure_Features_repetitions_based
+from feature_extraction.ExtractIMU_Features import (
+    ExtractIMU_Features,
+    ExtractIMU_features_repetitions_based,
+)
+from feature_extraction.ExtractPressure_Features import (
+    ExtractPressure_Features,
+    ExtractPressure_Features_repetitions_based,
+)
 from feature_extraction.get_paths import get_test_file_paths, get_one_foler_path
 from feature_extraction.create_feature_windows import drop_last_for_label
 import numpy as np
@@ -11,15 +17,15 @@ import time
 from collections import Counter
 from pathlib import Path
 
-
 # Description of module:
-# Implements feature extraction for a maximum number of 6 sensors, or a subset of fewer. Features are: frequency domain, 
+# Implements feature extraction for a maximum number of 6 sensors, or a subset of fewer. Features are: frequency domain,
 # time domain (<- Maria's work) and expanded fsr features (<- Alba's work).
-# Previoulsy implemented scenarios are not considered at this time, but will be included again at a later convenience. 
-# Right now this file is only implemented for preliminary analyses using the basline (Maria) feature space, or optionally adding 
+# Previoulsy implemented scenarios are not considered at this time, but will be included again at a later convenience.
+# Right now this file is only implemented for preliminary analyses using the basline (Maria) feature space, or optionally adding
 # additional insole-derived features.
 # Previous functionality of using norm IMU axes and HDR accelerometer has also been removed to reduce clutter. They may be added back in
 # at a later convenince.
+
 
 def run_feature_extraction(
     output_dir,
@@ -33,63 +39,106 @@ def run_feature_extraction(
     expanded_fsr=False,
 ):
     print("Starting...")
-    if right_arm_df is None or lower_back_df is None or left_fsr_df is None or right_fsr_df is None:
-        print("WARNING Data file [right arm, lower back, left sole or right sole] is not provided.")
+    if (
+        right_arm_df is None
+        or lower_back_df is None
+        or left_fsr_df is None
+        or right_fsr_df is None
+    ):
+        print(
+            "WARNING Data file [right arm, lower back, left sole or right sole] is not provided."
+        )
         answer = input("Was this intentional? (y/n): ").strip().lower()
         if answer == "n":
             print("Stopping...")
             return
         else:
             print("Continuing...")
-    
+
     if right_arm_df is not None:
-        feat_muse_rarm, window_labels_rarm = ExtractIMU_features_repetitions_based(right_arm_df, "R_Arm", fs=800)
+        feat_muse_rarm, window_labels_rarm = ExtractIMU_features_repetitions_based(
+            right_arm_df, "R_Arm", fs=800
+        )
     else:
         feat_muse_rarm, window_labels_rarm = None, None
-    
+
         # Left Arm
     if left_arm_df is not None:
-        feat_muse_larm, window_labels_larm = ExtractIMU_features_repetitions_based(left_arm_df, "L_Arm", fs=800)
+        feat_muse_larm, window_labels_larm = ExtractIMU_features_repetitions_based(
+            left_arm_df, "L_Arm", fs=800
+        )
     else:
         feat_muse_larm, window_labels_larm = None, None
 
     # Lower Back
     if lower_back_df is not None:
-        feat_muse_lback, window_labels_lback = ExtractIMU_features_repetitions_based(lower_back_df, "Lower_Back", fs=800)
+        feat_muse_lback, window_labels_lback = ExtractIMU_features_repetitions_based(
+            lower_back_df, "Lower_Back", fs=800
+        )
     else:
         feat_muse_lback, window_labels_lback = None, None
 
     # Upper Back
     if upper_back_df is not None:
-        feat_muse_uback, window_labels_uback = ExtractIMU_features_repetitions_based(upper_back_df, "Upper_Back", fs=800)
+        feat_muse_uback, window_labels_uback = ExtractIMU_features_repetitions_based(
+            upper_back_df, "Upper_Back", fs=800
+        )
     else:
         feat_muse_uback, window_labels_uback = None, None
 
     # Left FSR
     if left_fsr_df is not None:
         if expanded_fsr == False:
-            feat_fsr_left, window_labels_fsr_left = ExtractPressure_Features_repetitions_based(left_fsr_df, "Left", mean_fsr=True, fs=100, feature_space='baseline')
+            feat_fsr_left, window_labels_fsr_left = (
+                ExtractPressure_Features_repetitions_based(
+                    left_fsr_df, "Left", mean_fsr=True, fs=100, feature_space="baseline"
+                )
+            )
         elif expanded_fsr == True:
-            feat_fsr_left, window_labels_fsr_left = ExtractPressure_Features_repetitions_based(left_fsr_df, "Left", mean_fsr=True, fs=100, feature_space='expanded+baseline')
+            feat_fsr_left, window_labels_fsr_left = (
+                ExtractPressure_Features_repetitions_based(
+                    left_fsr_df,
+                    "Left",
+                    mean_fsr=True,
+                    fs=100,
+                    feature_space="expanded+baseline",
+                )
+            )
     else:
         feat_fsr_left, window_labels_fsr_left = None, None
 
     # Right FSR
     if right_fsr_df is not None:
         if expanded_fsr == False:
-            feat_fsr_right, window_labels_fsr_right = ExtractPressure_Features_repetitions_based(right_fsr_df, "Right", mean_fsr=True, fs=100, feature_space='baseline')
+            feat_fsr_right, window_labels_fsr_right = (
+                ExtractPressure_Features_repetitions_based(
+                    right_fsr_df,
+                    "Right",
+                    mean_fsr=True,
+                    fs=100,
+                    feature_space="baseline",
+                )
+            )
         elif expanded_fsr == True:
-            feat_fsr_right, window_labels_fsr_right = ExtractPressure_Features_repetitions_based(right_fsr_df, "Right", mean_fsr=True, fs=100, feature_space='expanded+baseline')
+            feat_fsr_right, window_labels_fsr_right = (
+                ExtractPressure_Features_repetitions_based(
+                    right_fsr_df,
+                    "Right",
+                    mean_fsr=True,
+                    fs=100,
+                    feature_space="expanded+baseline",
+                )
+            )
     else:
         feat_fsr_right, window_labels_fsr_right = None, None
-        
+
     features_dict = {
-    "right_arm": feat_muse_rarm,
-    "left_arm": feat_muse_larm,
-    "lower_back": feat_muse_lback,
-    "upper_back": feat_muse_uback,
-    "left_fsr": feat_fsr_left,
-    "right_fsr": feat_fsr_right
+        "right_arm": feat_muse_rarm,
+        "left_arm": feat_muse_larm,
+        "lower_back": feat_muse_lback,
+        "upper_back": feat_muse_uback,
+        "left_fsr": feat_fsr_left,
+        "right_fsr": feat_fsr_right,
     }
 
     label_dict = {
@@ -98,9 +147,9 @@ def run_feature_extraction(
         "lower_back": window_labels_lback,
         "upper_back": window_labels_uback,
         "left_fsr": window_labels_fsr_left,
-        "right_fsr": window_labels_fsr_right
+        "right_fsr": window_labels_fsr_right,
     }
-    
+
     # Filter out missing sensors
     available_sensors = [s for s in features_dict if features_dict[s] is not None]
 
@@ -129,12 +178,14 @@ def run_feature_extraction(
 
     # Combine features
     all_features = pd.concat([features_dict[s] for s in available_sensors], axis=1)
-    all_features['label'] = label_dict[available_sensors[0]]  # first sensor's labels
+    all_features["label"] = label_dict[available_sensors[0]]  # first sensor's labels
 
     sensor_combo_scenario = "_".join(available_sensors)
-        
-    output_filename = f"Features_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
-    
+
+    output_filename = (
+        f"Features_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+    )
+
     all_features.to_csv(Path(output_dir) / output_filename)
 
     return all_features
@@ -144,29 +195,29 @@ def run_feature_extraction_for_multiple_tests(
     scenario: list[str],
     expanded_fsr: bool = False,
     test_ids: str | list = "All",
-    stop_if_one_fails: bool = True
+    stop_if_one_fails: bool = True,
 ) -> bool:
     """
-    Enables feature extraction for all or a subset of participant filesets, based on their participant id prefix. Lets the user decide which sensor files 
+    Enables feature extraction for all or a subset of participant filesets, based on their participant id. Lets the user decide which sensor files
     should be included and whether to include the expanded fsr feature set or not.
 
     Parameters
     -----------
-    - scenario: list on the form ['left_arm', 'right_arm', 'upper_back' ...] defines for which sensors to extract features for. You mustassure that the sensors 
-    you define in the scenario are actually available for all the participants you wish to run for. Otherwise exeptions will occur in the participants for which not 
+    - scenario: list on the form ['left_arm', 'right_arm', 'upper_back' ...] defines for which sensors to extract features for. You mustassure that the sensors
+    you define in the scenario are actually available for all the participants you wish to run for. Otherwise exeptions will occur in the participants for which not
     all files are present. Accepted string values in the list are "left_arm", "right_arm", "upper_back", "lower_back", "left_fsr", "right_fsr".
     - expanded_fsr: bool defining whether or not to include he expanded fsr feature set
-    - test_ids: str default is "All", meaning include every test participant directory found by get_test_file_paths. Otherwise set it to a certain prefix and only test ids with that prefix
-    will be included.
+    - test_ids: str default is "All", meaning include every test participant directory found by get_test_file_paths. Otherwise set it to a list of specific participant ids
+    and only those will be run.
     - stop_if_one_fails: bool default is true. Whether or not to continue to the next participant if one fails. If true, the function exits upon a single failure.
 
     Returns
     -------
-    bool: True if feature extraction completed. False if stop_if_one_fails is activated and any et of files fails. 
+    bool: True if feature extraction completed. False if stop_if_one_fails is activated and any et of files fails.
     """
     file_dict = get_test_file_paths()
     start = time.time()
-    
+
     for test_id, paths in file_dict.items():
         if test_ids != "All" and test_id not in test_ids:
             continue
@@ -175,13 +226,31 @@ def run_feature_extraction_for_multiple_tests(
             # Get data files. Right arm and arm are interpreted as the same. Use right arm as naming convenion going forward.
             # Left and right are interpreted as left and right fsr.
             # Back is interpreted as lower back. use upper/lower as convention going forward.
-            right_arm_path = paths.get("right_arm") or paths.get("arm") if "right_arm" in scenario else False
-            left_arm_path  = paths.get("left_arm")  if "left_arm"  in scenario else False
-            lower_back_path = paths.get("lower_back") or paths.get("back") if "lower_back" in scenario else False
-            upper_back_path = paths.get("upper_back") if "upper_back" in scenario else False
-            left_fsr_path   = paths.get("left") or paths.get("left_fsr") if "left_fsr" in scenario else False
-            right_fsr_path  = paths.get("right") or paths.get("right_fsr") if "right_fsr" in scenario else False
-            
+            right_arm_path = (
+                paths.get("right_arm") or paths.get("arm")
+                if "right_arm" in scenario
+                else False
+            )
+            left_arm_path = paths.get("left_arm") if "left_arm" in scenario else False
+            lower_back_path = (
+                paths.get("lower_back") or paths.get("back")
+                if "lower_back" in scenario
+                else False
+            )
+            upper_back_path = (
+                paths.get("upper_back") if "upper_back" in scenario else False
+            )
+            left_fsr_path = (
+                paths.get("left") or paths.get("left_fsr")
+                if "left_fsr" in scenario
+                else False
+            )
+            right_fsr_path = (
+                paths.get("right") or paths.get("right_fsr")
+                if "right_fsr" in scenario
+                else False
+            )
+
             # Load CSVs if files exist
             df_rarm = pd.read_csv(right_arm_path) if right_arm_path else None
             df_larm = pd.read_csv(left_arm_path) if left_arm_path else None
@@ -189,21 +258,20 @@ def run_feature_extraction_for_multiple_tests(
             df_uback = pd.read_csv(upper_back_path) if upper_back_path else None
             df_lfsr = pd.read_csv(left_fsr_path) if left_fsr_path else None
             df_rfsr = pd.read_csv(right_fsr_path) if right_fsr_path else None
-            
+
             feat_dir = get_one_foler_path(test_id)
             print(f"Directory to save features: {feat_dir}")
-            
+
             # Drop rows where rep_id == None for files that exist
             for df in [df_rarm, df_larm, df_lback, df_uback, df_lfsr, df_rfsr]:
                 if df is not None and "rep_id" in df.columns:
                     df.dropna(subset=["rep_id"], inplace=True)
-            
-            
+
             # Run feature extraction with flexible inputs
             # Features are saved to a .csv as a final step in run_feature_extraction.
             all_features = run_feature_extraction(
                 output_dir=feat_dir,
-                test_id = test_id,
+                test_id=test_id,
                 right_arm_df=df_rarm,
                 left_arm_df=df_larm,
                 lower_back_df=df_lback,
@@ -213,7 +281,6 @@ def run_feature_extraction_for_multiple_tests(
                 expanded_fsr=expanded_fsr,
             )
 
-            
             if all_features is None:
                 print(f"Feature extraction failed for {test_id}")
                 if stop_if_one_fails:
@@ -227,14 +294,28 @@ def run_feature_extraction_for_multiple_tests(
     end = time.time()
     elapsed = end - start
     print(f"\n🕒 Done! Total time used: {elapsed:.2f} seconds")
-    
+
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Optionally define which test ids to run feature extraction for
-    run = ['prelim_1']
+    run = ["prelim_1"]
+
+    #### Define scenarios to be used in feature extraction ####
+    # scenario with all available sensors
+    scenario_6 = [
+        "right_arm",
+        "left_arm",
+        "lower_back",
+        "upper_back",
+        "left_fsr",
+        "right_fsr",
+    ]
+    # scenario with only 4 sensors (the old setup)
+    scenario_4 = ["right_arm", "lower_back", "left_fsr", "right_fsr"]
 
     # Run with selected settings!
-    run_feature_extraction_for_multiple_tests(expanded_fsr=True, test_ids=run)
-
+    run_feature_extraction_for_multiple_tests(
+        scenario=scenario_6, expanded_fsr=True, test_ids=run
+    )
