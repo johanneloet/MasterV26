@@ -34,7 +34,7 @@ def run_feature_extraction(
 ):
     print("Starting...")
     if right_arm_df is None or lower_back_df is None or left_fsr_df is None or right_fsr_df is None:
-        print("!!WARNING!! Data file [right arm, lower back, left sole or right sole] is not provided.")
+        print("WARNING Data file [right arm, lower back, left sole or right sole] is not provided.")
         answer = input("Was this intentional? (y/n): ").strip().lower()
         if answer == "n":
             print("Stopping...")
@@ -140,10 +140,29 @@ def run_feature_extraction(
     return all_features
 
 
-def run_feature_extraction_for_multiple_tests(expanded_fsr=False, test_ids="All"):
+def run_feature_extraction_for_multiple_tests(
+    scenario: list[str],
+    expanded_fsr: bool = False,
+    test_ids: str | list = "All",
+    stop_if_one_fails: bool = True
+) -> bool:
     """
-    Default behavior: test_ids is set to "All" - runs feature extraction for all test_ids found. Alternatively set test_ids to a list
-    of str corresponding to the test_ids you want to run feature extraction for.
+    Enables feature extraction for all or a subset of participant filesets, based on their participant id prefix. Lets the user decide which sensor files 
+    should be included and whether to include the expanded fsr feature set or not.
+
+    Parameters
+    -----------
+    - scenario: list on the form ['left_arm', 'right_arm', 'upper_back' ...] defines for which sensors to extract features for. You mustassure that the sensors 
+    you define in the scenario are actually available for all the participants you wish to run for. Otherwise exeptions will occur in the participants for which not 
+    all files are present. Accepted string values in the list are "left_arm", "right_arm", "upper_back", "lower_back", "left_fsr", "right_fsr".
+    - expanded_fsr: bool defining whether or not to include he expanded fsr feature set
+    - test_ids: str default is "All", meaning include every test participant directory found by get_test_file_paths. Otherwise set it to a certain prefix and only test ids with that prefix
+    will be included.
+    - stop_if_one_fails: bool default is true. Whether or not to continue to the next participant if one fails. If true, the function exits upon a single failure.
+
+    Returns
+    -------
+    bool: True if feature extraction completed. False if stop_if_one_fails is activated and any et of files fails. 
     """
     file_dict = get_test_file_paths()
     start = time.time()
@@ -153,13 +172,15 @@ def run_feature_extraction_for_multiple_tests(expanded_fsr=False, test_ids="All"
             continue
         print(f"\n--- Running feature extraction for {test_id} ---")
         try:
-            # Map input files to standardized sensor names
-            right_arm_path  = paths.get("right_arm") or paths.get("arm")
-            left_arm_path   = paths.get("left_arm")
-            lower_back_path = paths.get("lower_back") or paths.get("back")
-            upper_back_path = paths.get("upper_back")
-            left_fsr_path   = paths.get("left") or paths.get("left_fsr")
-            right_fsr_path  = paths.get("right") or paths.get("right_fsr")
+            # Get data files. Right arm and arm are interpreted as the same. Use right arm as naming convenion going forward.
+            # Left and right are interpreted as left and right fsr.
+            # Back is interpreted as lower back. use upper/lower as convention going forward.
+            right_arm_path = paths.get("right_arm") or paths.get("arm") if "right_arm" in scenario else False
+            left_arm_path  = paths.get("left_arm")  if "left_arm"  in scenario else False
+            lower_back_path = paths.get("lower_back") or paths.get("back") if "lower_back" in scenario else False
+            upper_back_path = paths.get("upper_back") if "upper_back" in scenario else False
+            left_fsr_path   = paths.get("left") or paths.get("left_fsr") if "left_fsr" in scenario else False
+            right_fsr_path  = paths.get("right") or paths.get("right_fsr") if "right_fsr" in scenario else False
             
             # Load CSVs if files exist
             df_rarm = pd.read_csv(right_arm_path) if right_arm_path else None
@@ -195,11 +216,13 @@ def run_feature_extraction_for_multiple_tests(expanded_fsr=False, test_ids="All"
             
             if all_features is None:
                 print(f"Feature extraction failed for {test_id}")
-                return None
+                if stop_if_one_fails:
+                    return False
 
         except Exception as e:
             print(f"Failed for {test_id}: {e}")
-            return None  # stop everything if one test fails
+            if stop_if_one_fails:
+                return False  # stop everything if one test fails
 
     end = time.time()
     elapsed = end - start
@@ -214,7 +237,4 @@ if __name__ == '__main__':
 
     # Run with selected settings!
     run_feature_extraction_for_multiple_tests(expanded_fsr=True, test_ids=run)
-
-    #TODO: configure multiple tests function to be able to account for different feature space configurations.
-    # Should no tbe that difficult honestly.
 
