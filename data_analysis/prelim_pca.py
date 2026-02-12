@@ -4,6 +4,7 @@ import math
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from pathlib import Path
+import numpy as np
 
 from feature_extraction.get_paths import get_test_folder_paths, get_one_foler_path
 
@@ -93,7 +94,7 @@ def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
     plt.figure(figsize=(8, 6))
 
     labels = sorted(scores_df["label"].unique())
-    cmap = plt.get_cmap("tab20", len(labels))
+    cmap = plt.get_cmap("tab20b", len(labels))
     color_map = {lab: cmap(i) for i, lab in enumerate(labels)}
 
     for label in labels:
@@ -105,27 +106,37 @@ def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
     plt.xlabel(x_col)
     plt.ylabel(y_col)
     plt.title(f"PCA Score Plot ({x_col} vs {y_col})")
-    plt.legend()
+    plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
     plt.tight_layout()
     plt.show()
 
 
-def plot_pca_subplots(scores_df, pairs=None, color_by="label", ncols=3, alpha=0.7):
-    import math
-
+def plot_pca_subplots(scores_df, pairs=None, color_by="label",
+                      ncols=3, alpha=0.6):
     if pairs is None:
-        pairs = [(1, i) for i in range(2, 7)]
+        pairs = [(1, i) for i in range(2, 8)]
 
     nplots = len(pairs)
     nrows = math.ceil(nplots / ncols)
 
     fig, axes = plt.subplots(
-        nrows, ncols, figsize=(5 * ncols, 4 * nrows), squeeze=False
+        nrows,
+        ncols,
+        figsize=(5* ncols, 4 * nrows),  # extra width for legend
+        squeeze=False,
+        constrained_layout=True
     )
+    fig.subplots_adjust(right=0.83)
 
     labels = sorted(scores_df[color_by].unique())
-    cmap = plt.get_cmap("tab20", len(labels))
-    color_map = {lab: cmap(i) for i, lab in enumerate(labels)}
+
+    # Use large distinct palette
+    cmap = (
+        list(plt.cm.tab20.colors)
+        + list(plt.cm.tab20b.colors)
+        + list(plt.cm.tab20c.colors)
+    )
+    color_map = {lab: cmap[i % len(cmap)] for i, lab in enumerate(labels)}
 
     for idx, (pc_x, pc_y) in enumerate(pairs):
         r, c = divmod(idx, ncols)
@@ -137,29 +148,34 @@ def plot_pca_subplots(scores_df, pairs=None, color_by="label", ncols=3, alpha=0.
         for lab in labels:
             sub = scores_df[scores_df[color_by] == lab]
             ax.scatter(
-                sub[x_col], sub[y_col], label=lab, alpha=alpha, color=color_map[lab]
+                sub[x_col],
+                sub[y_col],
+                alpha=alpha,
+                color=color_map[lab],
+                s=8,
+                edgecolor="none"
             )
 
         ax.set_xlabel(x_col)
         ax.set_ylabel(y_col)
         ax.set_title(f"{x_col} vs {y_col}")
 
-    # Hide unused axes
-    for idx in range(nplots, nrows * ncols):
-        r, c = divmod(idx, ncols)
-        axes[r][c].axis("off")
+    # Create shared legend manually
+    handles = [
+        plt.Line2D([0], [0], marker='o', color='w',
+                   markerfacecolor=color_map[lab],
+                   markersize=8, label=lab)
+        for lab in labels
+    ]
 
-    # Shared legend
-    handles, labs = axes[0][0].get_legend_handles_labels()
-    fig.legend(handles, labs, bbox_to_anchor=(0.98, 0.98))
-
-    fig.tight_layout(rect=[0, 0, 0.95, 1])
+    fig.legend(
+        handles=handles,
+        loc="center right",           # anchor the legend to the left-center
+        #bbox_to_anchor=(1.02, 0.5),  # place it just outside the figure
+        ncol=1  
+    )
+    
     plt.show()
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-
 
 def plot_scree(pca, max_pcs=None):
     """
@@ -199,7 +215,11 @@ def plot_scree(pca, max_pcs=None):
 
 
 if __name__ == "__main__":
-    scores, pca = run_pca_on_dataset(expanded_fsr=True)
-    # plot_scree(pca)
-    # plot_pca_scores(scores, pc_x=2, pc_y=3)
+    scores, pca = run_pca_on_dataset(
+        left_arm=False, 
+        upper_back=False,
+        expanded_fsr=True, 
+        prefixes=['prelim', 'test'])
+    plot_scree(pca)
+    plot_pca_scores(scores, pc_x=1, pc_y=2)
     plot_pca_subplots(scores)
