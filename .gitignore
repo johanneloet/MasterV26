@@ -1,2 +1,16 @@
 # Virtual environment
 .venv/
+
+# Pychache
+*.pyc
+
+# Figures
+*.png
+*.jpg
+*.jpeg
+*.pdf
+
+# Jupyter 
+.ipynb_checkpoints/
+
+

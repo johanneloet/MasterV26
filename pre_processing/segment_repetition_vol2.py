@@ -3,21 +3,25 @@ File purpose: segmentation of repetitions based on manual observations in accele
 
 This file is written by Johanne, though the approach is inspired by Maria's repetition segmentation approach.
 """
+
 # Imports
-#from get_paths import get_test_file_paths
+# from get_paths import get_test_file_paths
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from scipy.signal import find_peaks
+import re
+
 
 def plot_activity_accelerations_peaks_and_magnitude(
-        df,
-        activity_label,
-        height=1100,
-        distance=1100,
-        peak_indices=None,
-        colors=None,
-        figsize=(12, 6)):
+    df,
+    activity_label,
+    height=1100,
+    distance=1100,
+    peak_indices=None,
+    colors=None,
+    figsize=(12, 6),
+):
     """
     Plot acceleration components (X, Y, Z), magnitude, and detected peaks
     for a given activity label from an IMU DataFrame.
@@ -25,7 +29,7 @@ def plot_activity_accelerations_peaks_and_magnitude(
     Parameters
     ----------
     df : pandas.DataFrame
-        DataFrame with accelerometer data and a 'label' column and a 'ReconstructedTime' column. 
+        DataFrame with accelerometer data and a 'label' column and a 'ReconstructedTime' column.
     activity_label : str
         The movement label to filter (e.g., 'hand_up_back').
     height : float, optional
@@ -51,70 +55,86 @@ def plot_activity_accelerations_peaks_and_magnitude(
 
     if colors is None:
         colors = {
-            "mag": "#1F4E99",   # strong, clear blue (focus signal)
-            "x":   "#B0C4DE",   # light steel blue (faded)
-            "y":   "#C5D1E0",   # very light grey-blue
-            "z":   "#D6DFEB"    # near-background blue-grey
+            "mag": "#1F4E99",  # strong, clear blue (focus signal)
+            "x": "#B0C4DE",  # light steel blue (faded)
+            "y": "#C5D1E0",  # very light grey-blue
+            "z": "#D6DFEB",  # near-background blue-grey
         }
-        
-        
+
     # Suppose your DataFrame has a non-continuous or meaningful index
     subset = df[df["label"] == activity_label].copy()
 
     # Compute magnitude
-    subset["Accel mag"] = np.sqrt(subset["Axl.X"]**2 + subset["Axl.Y"]**2 + subset["Axl.Z"]**2)
+    subset["Accel mag"] = np.sqrt(
+        subset["Axl.X"] ** 2 + subset["Axl.Y"] ** 2 + subset["Axl.Z"] ** 2
+    )
 
     # Call find_peaks on the NumPy array
     if peak_indices == None:
-        local_peak_indices, properties = find_peaks(subset["Accel mag"].to_numpy(), height=1100, distance=1100)
+        local_peak_indices, properties = find_peaks(
+            subset["Accel mag"].to_numpy(), height=height, distance=distance
+        )
 
         # Map back to original indices
         original_peak_indices = subset.index[local_peak_indices]
 
         print("Local:", local_peak_indices[:5])
         print("Original:", original_peak_indices[:5])
-    else: 
+    else:
         local_peak_indices = peak_indices
         original_peak_indices = None
         properties = None
-    mid_indices = []
-    for i in range(0, len(local_peak_indices) - 1, 2):
-        mid_idx = (local_peak_indices[i] + local_peak_indices[i + 1]) // 2
-        mid_indices.append(mid_idx)
-
 
     # --- Plot ---
     plt.figure(figsize=figsize)
-    plt.plot(subset["ReconstructedTime"], subset["Axl.X"],
-             label="Axl.X", color=colors["x"], linewidth=1.5)
-    plt.plot(subset["ReconstructedTime"], subset["Axl.Y"],
-             label="Axl.Y", color=colors["y"], linewidth=1.5)
-    plt.plot(subset["ReconstructedTime"], subset["Axl.Z"],
-             label="Axl.Z", color=colors["z"], linewidth=1.5)
-    plt.plot(subset["ReconstructedTime"], subset["Accel mag"],
-            label="Axl. magnitude", color=colors["mag"], linewidth=1.5)
+    plt.plot(
+        subset["ReconstructedTime"],
+        subset["Axl.X"],
+        label="Axl.X",
+        color=colors["x"],
+        linewidth=1.5,
+    )
+    plt.plot(
+        subset["ReconstructedTime"],
+        subset["Axl.Y"],
+        label="Axl.Y",
+        color=colors["y"],
+        linewidth=1.5,
+    )
+    plt.plot(
+        subset["ReconstructedTime"],
+        subset["Axl.Z"],
+        label="Axl.Z",
+        color=colors["z"],
+        linewidth=1.5,
+    )
+    plt.plot(
+        subset["ReconstructedTime"],
+        subset["Accel mag"],
+        label="Axl. magnitude",
+        color=colors["mag"],
+        linewidth=1.5,
+    )
 
     # Plot peaks
-    plt.plot(subset["ReconstructedTime"].iloc[local_peak_indices],
-             subset["Accel mag"].iloc[local_peak_indices],
-             "rx", label="Peaks")
+    plt.plot(
+        subset["ReconstructedTime"].iloc[local_peak_indices],
+        subset["Accel mag"].iloc[local_peak_indices],
+        "rx",
+        label="Peaks",
+    )
 
     # --- Style ---
-    plt.title(f"Acceleration Components over Time ({activity_label})",
-              fontsize=16, weight='bold')
+    plt.title(
+        f"Acceleration Components over Time ({activity_label})",
+        fontsize=16,
+        weight="bold",
+    )
     plt.xlabel("Time (s)", fontsize=13)
     plt.ylabel("Acceleration (mg)", fontsize=13)
     plt.legend(title="Axes", fontsize=11)
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
-    
-    for mid_idx in mid_indices:
-        plt.axvline(
-            x=subset["ReconstructedTime"].iloc[mid_idx],
-            color="red",
-            linestyle=":",
-            linewidth=1,
-            alpha=0.8
-        )
+    plt.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.7)
+
     plt.tight_layout()
     plt.savefig("acceleration_peaks.pdf", format="pdf", bbox_inches="tight")
     plt.show()
@@ -122,29 +142,14 @@ def plot_activity_accelerations_peaks_and_magnitude(
     return subset, original_peak_indices, local_peak_indices
 
 
-
-def get_start_stop_times_from_peaks(df, peaks, activity_name, num_reps = 6,time_col="ReconstructedTime"):
-    """
-    Extract start and stop times for each repetition based on peak indices.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        The dataframe containing the time column.
-    peaks : array-like
-        List or array of peak indices (length >= 2).
-    activity_name : str
-        Activity label prefix (e.g., 'hand_up_back').
-    time_col : str, optional
-        Name of the time column, by default 'ReconstructedTime'.
-
-    Returns
-    -------
-    start_stop_times_reps : dict
-        Dictionary mapping rep_id -> (start_time, stop_time)
-    rep_intervals_df : pandas.DataFrame
-        Same info as a DataFrame (optional use)
-    """
+def get_start_stop_times_from_peaks(
+    df,
+    peaks,
+    activity_name,
+    num_reps=6,
+    time_col="ReconstructedTime",
+    L_R_alternate=False,
+):
     peaks = np.sort(np.asarray(peaks, dtype=int))
     if len(peaks) < 2:
         raise ValueError("Need at least two peaks to form intervals.")
@@ -159,109 +164,118 @@ def get_start_stop_times_from_peaks(df, peaks, activity_name, num_reps = 6,time_
         rep_stop_idx = peaks[i + 1]
         rep_start_time = times[rep_start_idx]
         rep_stop_time = times[rep_stop_idx]
-        rep_name = f"{activity_name}_{i+1}"
+        if L_R_alternate == True:
+            # IMPORTANT ASSUMPTION: the ordering during data collection was left first, then right. We can then assume that every odd repetition number is a left rep
+            # and any even rep number is a right side rep. This was protocol during the prelim data collection. Any deviations will be noted in the thesis.
+            # Therefore read data collection notes thoroughly!
+            if (i + 1) % 2 == 0:
+                rep_name = f"{activity_name}_right_{i+1}"
+            else:
+                rep_name = f"{activity_name}_left_{i+1}"
+        else:
+            rep_name = f"{activity_name}_{i+1}"
 
         start_stop_times_reps[rep_name] = (rep_start_time, rep_stop_time)
         intervals.append((rep_name, rep_start_time, rep_stop_time))
 
-    rep_intervals_df = pd.DataFrame(intervals, columns=["rep_id", "start_time", "stop_time"])
+    rep_intervals_df = pd.DataFrame(
+        intervals, columns=["rep_id", "start_time", "stop_time"]
+    )
     return start_stop_times_reps, rep_intervals_df
 
 
-if __name__ == '__main__':
-    PATH_DICT = get_test_file_paths()
-    
-    # select test_id ('test_1' - 'test_20')
-    test_id = 'test_14'
-    
-    # Paths to already labelled segments (with rep ids on Push/Pull, so ignore in this file)
-    arm_path = PATH_DICT[test_id]['arm']
-    back_path = PATH_DICT[test_id]['back']
-    left_path = PATH_DICT[test_id]['left']
-    right_path = PATH_DICT[test_id]['right']
-    
-    # Begin with arm
-    arm_df = pd.read_csv(arm_path)
-    
-    plot_activity_accelerations_peaks_and_magnitude(arm_df, 'hand_up_back')
-    
-    hand_back_df = arm_df[arm_df["label"] == "hand_up_back"].copy()
-    hand_back_df['Accel mag'] = np.sqrt(hand_back_df['Axl.X']**2 + hand_back_df['Axl.Y']**2 + hand_back_df['Axl.Z']**2)
-    gradient_x = np.gradient(hand_back_df['Axl.X'])
-    peak_indices, _ = find_peaks(hand_back_df['Accel mag'], height=1100, distance=1100)
-    
+def assign_rep_ids(
+    sensor_dfs,
+    output_dir,
+    numbered_labels,
+    static_labels=[
+        "standing",
+        "sitting",
+        "walking",
+        "neutral_load_left",
+        "neutral_load_right",
+    ],
+):
+    valid_dfs = {}
+    skipped = []
 
-    plt.figure(figsize=(12, 6))
-    # Plot each axis with consistent styling
-    plt.plot(hand_back_df['ReconstructedTime'], hand_back_df['Accel mag'], label='Axl. magnitude', color= 'pink' , linewidth=1.5)
-    plt.plot(hand_back_df['ReconstructedTime'], hand_back_df['Axl.X'], label='Axl.X', color='#98FB98', linewidth=1.5)
-    plt.plot(hand_back_df['ReconstructedTime'], hand_back_df['Axl.Y'], label='Axl.Y', color='#A569BD',  linewidth=1.5)
-    plt.plot(hand_back_df['ReconstructedTime'], hand_back_df['Axl.Z'], label='Axl.Z', color='#5DADE2',linewidth=1.5)
-    plt.plot(hand_back_df["ReconstructedTime"].iloc[peak_indices], hand_back_df["Accel mag"].iloc[peak_indices], "rx", label="Peaks")
-    
-    # Add title and axis labels
-    plt.title("Acceleration Components over Time (hand_up_back)", fontsize=16, weight='bold')
-    plt.xlabel("Time (s)", fontsize=13)
-    plt.ylabel("Acceleration (mg)", fontsize=13)
+    # Validate rep_id presence
+    for name, df in sensor_dfs.items():
+        if "rep_id" not in df.columns:
+            print(f"⚠️ WARNING: '{name}' skipped (missing 'rep_id' column)")
+            skipped.append(name)
+        else:
+            valid_dfs[name] = df
 
-    # Add legend and grid
-    plt.legend(title="Axes", fontsize=11)
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+    if not valid_dfs:
+        print("❌ No valid dataframes to process. Exiting.")
+        return sensor_dfs
 
-    # Tight layout and show
-    plt.tight_layout()
-    plt.show()
-    
-    hands_forward_df = arm_df[arm_df["label"] == "hands_forward"].copy()
-    hands_forward_df['Accel mag'] = np.sqrt(hands_forward_df['Axl.X']**2 + hands_forward_df['Axl.Y']**2 + hands_forward_df['Axl.Z']**2)
-    gradient_x = np.gradient(hands_forward_df['Axl.X'])
-    peak_indices, _ = find_peaks(hands_forward_df['Accel mag'], height=1100, distance=1100)
-    
+    dfs = valid_dfs.values()
 
-    plt.figure(figsize=(12, 6))
-    # Plot each axis with consistent styling
-    plt.plot(hands_forward_df['ReconstructedTime'], hands_forward_df['Accel mag'], label='Axl. magnitude', color= 'pink' , linewidth=1.5)
-    plt.plot(hands_forward_df['ReconstructedTime'], hands_forward_df['Axl.X'], label='Axl.X', color='#98FB98', linewidth=1.5)
-    plt.plot(hands_forward_df['ReconstructedTime'], hands_forward_df['Axl.Y'], label='Axl.Y', color='#A569BD',  linewidth=1.5)
-    plt.plot(hands_forward_df['ReconstructedTime'], hands_forward_df['Axl.Z'], label='Axl.Z', color='#5DADE2',linewidth=1.5)
-    plt.plot(hands_forward_df["ReconstructedTime"].iloc[peak_indices], hands_forward_df["Accel mag"].iloc[peak_indices], "rx", label="Peaks")
-    
-    # Add title and axis labels
-    plt.title("Acceleration Components over Time (hands_forward)", fontsize=16, weight='bold')
-    plt.xlabel("Time (s)", fontsize=13)
-    plt.ylabel("Acceleration (mg)", fontsize=13)
+    ## Clear rep_id for rows that are not already labeled
+    numbered_pattern = "|".join(numbered_labels + static_labels)
 
-    # Add legend and grid
-    plt.legend(title="Axes", fontsize=11)
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+    for df in dfs:
+        mask = df["label"].str.contains(numbered_pattern, case=False, na=False)
+        df.loc[~mask, "rep_id"] = None
 
-    # Tight layout and show
-    plt.tight_layout()
-    plt.show()
-    
-    
-    hands_up_df = arm_df[arm_df["label"] == "hands_up"].copy()
-    hands_up_df['Accel mag'] = np.sqrt(hands_up_df['Axl.X']**2 + hands_up_df['Axl.Y']**2 + hands_up_df['Axl.Z']**2)
-    gradient_x = np.gradient(hands_up_df['Axl.X'])
-    peak_indices, _ = find_peaks(hands_up_df['Accel mag'], height=1100, distance=1100)
-    
-    plt.figure(figsize=(12, 6))
-    # Plot each axis with consistent styling
-    plt.plot(hands_up_df['ReconstructedTime'], hands_up_df['Accel mag'], label='Axl. magnitude', color= 'pink' , linewidth=1.5)
-    plt.plot(hands_up_df['ReconstructedTime'], hands_up_df['Axl.X'], label='Axl.X', color='#98FB98', linewidth=1.5)
-    plt.plot(hands_up_df['ReconstructedTime'], hands_up_df['Axl.Y'], label='Axl.Y', color='#A569BD',  linewidth=1.5)
-    plt.plot(hands_up_df['ReconstructedTime'], hands_up_df['Axl.Z'], label='Axl.Z', color='#5DADE2',linewidth=1.5)
-    plt.plot(hands_up_df["ReconstructedTime"].iloc[peak_indices], hands_up_df["Accel mag"].iloc[peak_indices], "rx", label="Peaks")
-    
-    # Add title and axis labels
-    plt.title("Acceleration Components over Time (hands_up)", fontsize=16, weight='bold')
-    plt.xlabel("Time (s)", fontsize=13)
-    plt.ylabel("Acceleration (mg)", fontsize=13)
+    # Use one dataframe to get activities
+    activities = next(iter(dfs))["label"].unique().tolist()
+    print("Activities:", activities)
 
-    # Add legend and grid
-    plt.legend(title="Axes", fontsize=11)
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+    for activity in activities:
+        if activity in static_labels:
+            continue
 
-    # Tight layout and show
-    plt.tight_layout()
-    plt.show()
+        # handle labels that already have assigned rep ids in their label.
+        if re.search(r"_\d+$", str(activity).lower()):
+            for df in dfs:
+                mask = df["label"].astype(str).str.lower().eq(str(activity).lower())
+
+                # rep_id = original label
+                df.loc[mask, "rep_id"] = df.loc[mask, "label"]
+
+                # label = base
+                df.loc[mask, "label"] = (
+                    df.loc[mask, "label"]
+                    .astype(str)
+                    .str.extract(r"^(.+?)_\d+$", expand=False)
+                    .str.lower()
+                )
+
+            print(
+                f"✅ Normalized numbered label '{activity}' -> base label + rep_id preserved."
+            )
+
+        else:
+            rep_start_stop_time_path = (
+                output_dir / f"start_stop_rep_times_{activity}.csv"
+            )
+            try:
+                start_stop_df = pd.read_csv(rep_start_stop_time_path)
+            except FileNotFoundError:
+                print(f"⚠️ WARNING: Missing CSV for activity '{activity}', skipping")
+                continue
+
+            for _, rep in start_stop_df.iterrows():
+                rep_id = rep["rep_id"]
+                start_time = rep["start_time"]
+                stop_time = rep["stop_time"]
+
+                for df in dfs:
+                    mask = (
+                        (df["label"] == activity)
+                        & (df["ReconstructedTime"] >= start_time)
+                        & (df["ReconstructedTime"] < stop_time)
+                    )
+                    df.loc[mask, "rep_id"] = rep_id
+
+            print(f"✅ Assigned rep_ids for {activity}")
+
+    for name, df in valid_dfs.items():
+        save_path = output_dir / f"{name}_with_rep_ids.csv"
+        df.to_csv(save_path, index=False)
+        print(f"💾 Saved: {save_path}")
+
+    return sensor_dfs

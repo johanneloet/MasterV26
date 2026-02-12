@@ -2,3 +2,6 @@ matplotlib
 pandas
 numpy
 scipy
+ipykernel
+scikit-learn
+black

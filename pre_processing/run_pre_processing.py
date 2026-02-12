@@ -1,13 +1,20 @@
-from labeling import apply_corrected_labels, extract_pressure_data, remove_idle, sort_push_pull
+from labeling import (
+    apply_corrected_labels,
+    extract_pressure_data,
+    remove_idle,
+    sort_push_pull,
+)
 from clean_mitch_timestamps import run_fix_timestamp_mitch
 import rotating_imu_data
 from filter_sensor_data import median_filter_medfilt
-from segment_repetitions import make_start_stop_segmentation_file, apply_repetition_label
+from segment_repetitions import (
+    make_start_stop_segmentation_file,
+    apply_repetition_label,
+)
 
-
-raw_mitch_left      = ""
-raw_mitch_right     = ""
-start_stop_labels   = ""
+raw_mitch_left = ""
+raw_mitch_right = ""
+start_stop_labels = ""
 
 """
 "-- Fix time, delet end duplicates and fix fsr numbers mitch --"
@@ -22,11 +29,11 @@ df_label_right, path_label_right = apply_corrected_labels(path_fix_right, start_
 # Take a brake, check the the plot with all labels and update label file if nessesary
 
 # Filepaths nessessary from here on:
-label_file_arm      = ""
-label_file_back     = ""
-label_file_left     = ""
-label_file_right    = ""
-filepath_foler      = "" 
+label_file_arm = ""
+label_file_back = ""
+label_file_left = ""
+label_file_right = ""
+filepath_foler = ""
 
 """
 "-- Update labels if nessessary --"
@@ -79,7 +86,7 @@ df_median_right,    path_median_right   = median_filter_medfilt(path_no_idle_rig
 """
 
 "-- Segment Repetitions --"
-#df_start_stop_segm, path_start_stop_seg = make_start_stop_segmentation_file(path_median_arm, path_median_back, start_stop_labels, filepath_foler)
+# df_start_stop_segm, path_start_stop_seg = make_start_stop_segmentation_file(path_median_arm, path_median_back, start_stop_labels, filepath_foler)
 
 # Take a brake
 # 1. Look at the start stop file just generated, change times if some dont stop and start again at same time, save changes
@@ -89,25 +96,37 @@ df_median_right,    path_median_right   = median_filter_medfilt(path_no_idle_rig
 # 5. run
 
 
+start_stop_file = ""
+filter_file_arm = ""
+filter_file_back = ""
+filter_file_left = ""
+filter_file_right = ""
 
+# I tilfelle denne på kjøres på nytt:
+# df_start_stop_segm, path_start_stop_seg = make_start_stop_segmentation_file(filter_file_arm, filter_file_back, start_stop_labels, filepath_foler)
 
-start_stop_file     = ""
-filter_file_arm     = ""
-filter_file_back    = ""
-filter_file_left    = ""
-filter_file_right   = ""
-
-#I tilfelle denne på kjøres på nytt:
-#df_start_stop_segm, path_start_stop_seg = make_start_stop_segmentation_file(filter_file_arm, filter_file_back, start_stop_labels, filepath_foler)
-
-df_segmented_arm, path_segmented_arm        = apply_repetition_label(filter_file_arm, start_stop_file, None, None)
-df_segmented_back, path_segmented_back      = apply_repetition_label(filter_file_back, start_stop_file, None, None)
-df_segmented_left, path_segmented_left      = apply_repetition_label(filter_file_left, start_stop_file, None, None)
-df_segmented_right, path_segmented_right    = apply_repetition_label(filter_file_right, start_stop_file, None, None)
+df_segmented_arm, path_segmented_arm = apply_repetition_label(
+    filter_file_arm, start_stop_file, None, None
+)
+df_segmented_back, path_segmented_back = apply_repetition_label(
+    filter_file_back, start_stop_file, None, None
+)
+df_segmented_left, path_segmented_left = apply_repetition_label(
+    filter_file_left, start_stop_file, None, None
+)
+df_segmented_right, path_segmented_right = apply_repetition_label(
+    filter_file_right, start_stop_file, None, None
+)
 
 
 "-- Sort push and pull --"
-df_ppsort_arm, path_ppsort_arm      = sort_push_pull(path_segmented_arm, df_segmented_arm)
-df_ppsort_back, path_ppsort_back    = sort_push_pull(path_segmented_back, df_segmented_back)
-df_ppsort_left, path_ppsort_left    = sort_push_pull(path_segmented_left, df_segmented_left)
-df_ppsort_right, path_ppsort_right  = sort_push_pull(path_segmented_right, df_segmented_right)
+df_ppsort_arm, path_ppsort_arm = sort_push_pull(path_segmented_arm, df_segmented_arm)
+df_ppsort_back, path_ppsort_back = sort_push_pull(
+    path_segmented_back, df_segmented_back
+)
+df_ppsort_left, path_ppsort_left = sort_push_pull(
+    path_segmented_left, df_segmented_left
+)
+df_ppsort_right, path_ppsort_right = sort_push_pull(
+    path_segmented_right, df_segmented_right
+)
