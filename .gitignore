@@ -13,4 +13,6 @@
 # Jupyter 
 .ipynb_checkpoints/
 
+# Models
+*.joblib
 
