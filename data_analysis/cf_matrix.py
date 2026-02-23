@@ -9,7 +9,8 @@ def make_confusion_matrix(
         cmap='Blues',
         title=None,
         fontsize=25,
-        savepath="confusion_matrix_colored.pdf"
+        savepath="confusion_matrix_colored.pdf",
+        color_code=True,
 ):
 
     cf = np.asarray(cf)
@@ -102,24 +103,6 @@ def make_confusion_matrix(
         ax.text(x, i + 0.80, f"{fp:.2f}%",    color="red",
                 ha='center', va='center', fontsize=fontsize-4, fontweight='bold')    # wrong%
 
-    # ---- RECALL ROW (column-based) ----
-    # for j in range(n):
-    #     r  = recall[j] * 100
-    #     fn = (1 - recall[j]) * 100
-
-    #     y = n + 0.5
-    #     ax.text(j + 0.35, y,
-    #             f"{col_sums[j]:.0f}",
-    #             color="black", ha='center', va='center',
-    #             fontsize=fontsize-1)
-    #     ax.text(j + 0.50, y,
-    #             f"\n{r:.2f}%",
-    #             color="green", ha='center', va='center',
-    #             fontsize=fontsize-1)
-    #     ax.text(j + 0.65, y,
-    #             f"\n\n{fn:.2f}%",
-    #             color="red", ha='center', va='center',
-    #             fontsize=fontsize-1)
     for j in range(n):
         r  = recall[j] * 100
         fn = (1 - recall[j]) * 100
@@ -132,25 +115,31 @@ def make_confusion_matrix(
         ax.text(x, n +0.45,       f"\n\n{fn:.2f}%",     color="red",
                 ha='center', va='center', fontsize=fontsize-4, fontweight='bold')
 
-
-    # ---- ACCURACY CELL (bottom-right) ----
-    # x = n + 0.5
-    # y = n + 0.5
-    # ax.text(x, y - 0.15,
-    #         f"{total:.0f}",
-    #         color="black", ha='center', va='center',
-    #         fontsize=fontsize-1)
-    # ax.text(x, y,
-    #         f"{accuracy*100:.2f}%",
-    #         color="green", ha='center', va='center',
-    #         fontsize=fontsize-1)
-    # ax.text(x, y + 0.15,
-    #         f"{(1-accuracy)*100:.2f}%",
-    #         color="red", ha='center', va='center',
-    #         fontsize=fontsize-1)
     
     x = n + 0.5
     y = n + 0.5
+    if color_code:  
+        # Create row and column colors based on keywords
+        categories = ['arm', 'lean']
+        row_colors = []
+        col_colors = []
+        for label in categories:
+                l = label.lower()
+                # default color
+                color = "black"
+                # check if any keyword matches
+        for kw, kw_color in color_code.items():
+                if kw in l:
+                        color = kw_color
+                        break
+        row_colors.append(color)
+        col_colors.append(color)
+
+        # Apply colors
+        for tick_label, color in zip(ax.get_yticklabels()[:-1], row_colors):
+                tick_label.set_color(color)
+        for tick_label, color in zip(ax.get_xticklabels()[:-1], col_colors):
+                tick_label.set_color(color)
 
     ax.text(x, y - 0.3, f"{total:.0f}",              color="white",
             ha='center', va='center', fontsize=fontsize-4, fontweight='bold')
