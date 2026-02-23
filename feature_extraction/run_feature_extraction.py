@@ -300,7 +300,7 @@ def run_feature_extraction_for_multiple_tests(
 
 if __name__ == "__main__":
     # Optionally define which test ids to run feature extraction for
-    run = ["prelim_2"]
+    run = ["prelim_1", 'prelim_2', 'prelim_3', 'prelim_4', 'prelim_5']
 
     #### Define scenarios to be used in feature extraction ####
     # scenario with all available sensors

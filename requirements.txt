@@ -5,3 +5,4 @@ scipy
 ipykernel
 scikit-learn
 black
+seaborn

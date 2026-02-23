@@ -148,7 +148,7 @@ def get_start_stop_times_from_peaks(
     activity_name,
     num_reps=6,
     time_col="ReconstructedTime",
-    L_R_alternate=False,
+    side_mode=None,  # None, "alternate", "sequential"
 ):
     peaks = np.sort(np.asarray(peaks, dtype=int))
     if len(peaks) < 2:
@@ -156,24 +156,41 @@ def get_start_stop_times_from_peaks(
 
     times = df[time_col].to_numpy()
 
+    if len(peaks) < num_reps + 1:
+        raise ValueError("Not enough peaks for the requested number of reps.")
+
     start_stop_times_reps = {}
     intervals = []
-    assert len(peaks) >= num_reps
+
     for i in range(num_reps):
         rep_start_idx = peaks[i]
         rep_stop_idx = peaks[i + 1]
         rep_start_time = times[rep_start_idx]
         rep_stop_time = times[rep_stop_idx]
-        if L_R_alternate == True:
-            # IMPORTANT ASSUMPTION: the ordering during data collection was left first, then right. We can then assume that every odd repetition number is a left rep
-            # and any even rep number is a right side rep. This was protocol during the prelim data collection. Any deviations will be noted in the thesis.
-            # Therefore read data collection notes thoroughly!
-            if (i + 1) % 2 == 0:
-                rep_name = f"{activity_name}_right_{i+1}"
+
+        rep_number = i + 1
+
+        # Side variations
+        # Important assumption!! Data is collected left first then right
+        if side_mode == "alternate":
+            # L, R, L, R...
+            if rep_number % 2 == 0:
+                side = "right"
             else:
-                rep_name = f"{activity_name}_left_{i+1}"
+                side = "left"
+            rep_name = f"{activity_name}_{side}_{rep_number}"
+
+        elif side_mode == "sequential":
+            # First half left, second half right
+            half = num_reps // 2
+            if i < half:
+                side = "left"
+            else:
+                side = "right"
+            rep_name = f"{activity_name}_{side}_{rep_number}"
+
         else:
-            rep_name = f"{activity_name}_{i+1}"
+            rep_name = f"{activity_name}_{rep_number}"
 
         start_stop_times_reps[rep_name] = (rep_start_time, rep_stop_time)
         intervals.append((rep_name, rep_start_time, rep_stop_time))
@@ -181,6 +198,7 @@ def get_start_stop_times_from_peaks(
     rep_intervals_df = pd.DataFrame(
         intervals, columns=["rep_id", "start_time", "stop_time"]
     )
+
     return start_stop_times_reps, rep_intervals_df
 
 

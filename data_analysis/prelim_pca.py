@@ -56,12 +56,22 @@ def run_pca_on_dataset(
     feature_dfs = []
     for p in include_csvs:
         df = pd.read_csv(p)
+        # Extract test_id from filename
+        filename = p.name  # e.g. "Features_prelim_01_expandedFalse_..."
+        test_id = filename.split("Features_")[1].split("_expanded")[0]
+
+        prefix = test_id.split("_")[0]  # "prelim" or "test"
+
+        df["prefix"] = prefix  # add prefix column
+
         feature_dfs.append(df)
 
     combined_features = pd.concat(feature_dfs, ignore_index=True)
 
     y = combined_features["label"]
-    X = combined_features.drop(columns=["label"])
+    prefix = combined_features["prefix"]
+
+    X = combined_features.drop(columns=["label", "prefix"])
     # Remove any non-numeric columns
     X = X.select_dtypes(include="number")
 
@@ -82,9 +92,10 @@ def run_pca_on_dataset(
         scores, columns=[f"PC{i+1}" for i in range(scores.shape[1])]
     )
 
-    # add labels back in to be able to plot color coded by label later.
+    # add labels and prefixes back in to be able to plot color coded by label and dataset later 
     scores_df["label"] = y.values
-
+    scores_df["prefix"] = prefix.values
+    
     return scores_df, pca
 
 
@@ -96,4 +107,4 @@ if __name__ == "__main__":
         prefixes=['prelim', 'test'])
     plot_scree(pca)
     plot_pca_scores(scores, pc_x=1, pc_y=2)
-    plot_pca_subplots(scores)
+    plot_pca_subplots(scores, color_by='prefix', style_by='prefix')
