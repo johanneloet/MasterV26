@@ -12,13 +12,16 @@ import seaborn as sns
 from matplotlib.patches import Rectangle
 from collections import defaultdict
 
-from feature_extraction.get_paths import get_feture_paths, get_feature_paths_for_multiple_spaces, get_test_folder_paths
+from feature_extraction.get_paths import (
+    get_feture_paths,
+    get_feature_paths_for_multiple_spaces,
+    get_test_folder_paths,
+)
 from data_analysis.run_SVC import run_SVC, run_SVC_with_feature_tuning
 from data_analysis.run_NN import run_NN, run_NN_with_feature_tuning
 import json
 from data_analysis.cf_matrix import make_confusion_matrix
 from pathlib import Path
-
 
 # def run_loocv_with_pca(label_mapping=None, clf_name = "", window_size=8, norm_IMU=True, mean_fsr=False, hdr=False, class_version=1):
 #     feature_files = get_feture_paths(window_length_sec=window_size, norm_IMU=norm_IMU, mean_fsr=mean_fsr, hdr=hdr)
@@ -50,7 +53,7 @@ from pathlib import Path
 #                 labels = ["hands_up", "push_pull", "squatting", "lifting", "sit_stand", "walking"]
 #             elif label_mapping == label_mapping_v3:
 #                 labels = ["hands_up", "push_pull_lift", "squat", "sit", "stand_walk"]
-#         else:    
+#         else:
 #             labels = ["hand_up_back", "hands_forward", "hands_up", "push", "pull", "squatting", "lifting", "sitting", "standing", "walking"]
 
 #         # Scale data (SD of 1 and mean of 0)
@@ -60,7 +63,7 @@ from pathlib import Path
 #         # Transfor both train and test set with the scaler
 #         X_train_scaled = scaler.transform(X_train)
 #         X_test_scaled = scaler.transform(X_test)
-        
+
 #         # Apply pca
 #         pca = PCA(n_components=0.95)
 #         pca_fit = pca.fit(X_train_scaled)
@@ -107,7 +110,7 @@ from pathlib import Path
 #         # all_Y_true.extend(Y_test)
 #         # all_Y_pred.extend(Y_test_fit)
 #         # all_hyperparameters.extend(best_params)
-        
+
 #         cm = confusion_matrix(Y_test, Y_test_fit, labels=labels)
 
 #         print(f"\nConfusion matrix for {leave_out}:")
@@ -120,7 +123,7 @@ from pathlib import Path
 #         plt.tight_layout()
 #         plt.savefig(f"./plots_use/confmat_{leave_out}.png", dpi=300)
 #         plt.close()
-            
+
 #     end = time.time()
 #     elapsed = end - start
 #     print(f"\n🕒 Done! Total time uesd: {elapsed:.2f} seconds")
@@ -133,7 +136,7 @@ from pathlib import Path
 #     # Confusion matrix
 #     save_path="./plots_use"
 #     os.makedirs(save_path, exist_ok=True)
-    
+
 #     cm = confusion_matrix(all_Y_true, all_Y_pred, labels=labels, normalize='true')
 #     print("\n🧮 Confusion Matrix:")
 #     print(cm)
@@ -143,11 +146,11 @@ from pathlib import Path
 #     for text in disp.ax_.texts:
 #         text.set_fontsize(8)
 #     plt.tight_layout()
-    
+
 #     save_file1 = os.path.join(save_path, f"{clf_name}_norm_{norm_IMU}_fsr{mean_fsr}_hdr{hdr}_class_{class_version}_{window_size}_sec_CM1.png")
 #     plt.savefig(save_file1, dpi=300)
 #     plt.close()
-    
+
 #     cm2 = confusion_matrix(all_Y_true, all_Y_pred, labels=labels)
 #     df_cm2 = pd.DataFrame(cm2, index=labels, columns=labels)
 
@@ -156,7 +159,7 @@ from pathlib import Path
 #     totals_row.name = 'Total'
 
 #     df_cm2 = pd.concat([df_cm2, totals_row.to_frame().T])
-    
+
 #     n_rows, n_cols = df_cm2.shape
 
 #     mask = np.zeros_like(df_cm2, dtype=bool)
@@ -166,7 +169,7 @@ from pathlib import Path
 #     if label_mapping is None:
 #         plt.figure(figsize=(7, 6))
 #     else:
-#         plt.figure(figsize=(5.5, 5)) 
+#         plt.figure(figsize=(5.5, 5))
 #     ax = sns.heatmap(df_cm2, annot=True, fmt='.0f', cmap='BuPu', mask=mask, cbar=True)
 
 #     total_bg_color = '#e9ecff'  # matching 'BuPu'
@@ -196,24 +199,22 @@ from pathlib import Path
 #     plt.tight_layout()
 #     plt.savefig(save_file2, dpi=300)
 #     plt.close()
-    
+
 #     return all_accuracies
 
 
-
-
 def run_loocv_with_pca(
-    clf_name : str="SVC",
-    label_mapping : dict | None = None,
-    class_version : int = 1,
-    prefixes : list[str]=["prelim"],
-    right_arm : bool =True,
-    left_arm : bool =True,
-    lower_back : bool=True,
-    upper_back : bool =True,
-    left_fsr : bool=True,
-    right_fsr : bool=True,
-    expanded_fsr : bool=False,
+    clf_name: str = "SVC",
+    label_mapping: dict | None = None,
+    class_version: int = 1,
+    prefixes: list[str] = ["prelim"],
+    right_arm: bool = True,
+    left_arm: bool = True,
+    lower_back: bool = True,
+    upper_back: bool = True,
+    left_fsr: bool = True,
+    right_fsr: bool = True,
+    expanded_fsr: bool = False,
 ):
     test_folder_dict = get_test_folder_paths()
 
@@ -288,12 +289,11 @@ def run_loocv_with_pca(
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
 
-
         pca = PCA(n_components=0.95)
         X_train_pca = pca.fit_transform(X_train_scaled)
-        X_train_pca = np.delete(X_train_pca, 3, axis=1) # drop PC 4, as this encodes dataset variance
+        # X_train_pca = np.delete(X_train_pca, 3, axis=1) # drop PC 4, as this encodes dataset variance
         X_test_pca = pca.transform(X_test_scaled)
-        X_test_pca = np.delete(X_test_pca, 3, axis=1) # drop PC 4, as this encodes dataset variance
+        # X_test_pca = np.delete(X_test_pca, 3, axis=1) # drop PC 4, as this encodes dataset variance
 
         print(f"PCA components: {pca.n_components_}")
         print(f"Explained variance: {pca.explained_variance_ratio_.sum():.3f}")
@@ -302,16 +302,20 @@ def run_loocv_with_pca(
 
         if clf_name == "SVC":
             test_results, train_results = run_SVC(
-                X_train_pca, Y_train,
-                X_test_pca, Y_test,
+                X_train_pca,
+                Y_train,
+                X_test_pca,
+                Y_test,
                 class_names=labels,
                 CV_suffix=CV_suffix,
                 opt=True,
             )
         elif clf_name == "NN":
             test_results, train_results, *_ = run_NN(
-                X_train_pca, Y_train,
-                X_test_pca, Y_test,
+                X_train_pca,
+                Y_train,
+                X_test_pca,
+                Y_test,
                 class_names=labels,
                 CV_suffix=CV_suffix,
                 opt=True,
@@ -345,32 +349,31 @@ def run_loocv_with_pca(
     print(f"Mean Precision: {np.mean(all_precision):.3f}")
     print(f"Mean Recall:    {np.mean(all_recall):.3f}")
 
-
     save_path = "./plots_use"
     os.makedirs(save_path, exist_ok=True)
 
     cm = confusion_matrix(all_Y_true, all_Y_pred, labels=labels)
 
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
-    
+
     run_name = f"{clf_name}_{sensor_combo_scenario}_expanded{expanded_fsr}_class{class_version}"
 
     make_confusion_matrix(
         cf=cm,
         categories=labels,
         title=f"{clf_name} Confusion Matrix",
-        savepath=f"./plots_use/{run_name}.pdf"
+        savepath=f"./plots_use/{run_name}.pdf",
+        color_code={},
     )
 
     return all_accuracies
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_loocv_with_pca(
-        prefixes=['prelim', 'test'],
-        left_arm=False,
-        upper_back=False,
-        clf_name='SVC',
-        expanded_fsr=True)
-    
-    
+        prefixes=["akso"],
+        left_arm=True,
+        upper_back=True,
+        clf_name="SVC",
+        expanded_fsr=True,
+    )

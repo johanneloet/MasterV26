@@ -37,8 +37,16 @@ def run_feature_extraction(
     left_fsr_df=None,
     right_fsr_df=None,
     expanded_fsr=False,
+    IMU_sampling_rates=800,
 ):
     print("Starting...")
+    # define constants
+    base_IMU_rate = 800
+    base_target_samples = 2800
+    sampling_rate_ratio = IMU_sampling_rates / base_IMU_rate
+    target_IMU_samples = int(base_target_samples * sampling_rate_ratio)
+    print("Target IMU samples is", target_IMU_samples)
+
     if (
         right_arm_df is None
         or lower_back_df is None
@@ -57,7 +65,10 @@ def run_feature_extraction(
 
     if right_arm_df is not None:
         feat_muse_rarm, window_labels_rarm = ExtractIMU_features_repetitions_based(
-            right_arm_df, "R_Arm", fs=800
+            right_arm_df,
+            "R_Arm",
+            fs=IMU_sampling_rates,
+            target_num_samples=target_IMU_samples,
         )
     else:
         feat_muse_rarm, window_labels_rarm = None, None
@@ -65,7 +76,10 @@ def run_feature_extraction(
         # Left Arm
     if left_arm_df is not None:
         feat_muse_larm, window_labels_larm = ExtractIMU_features_repetitions_based(
-            left_arm_df, "L_Arm", fs=800
+            left_arm_df,
+            "L_Arm",
+            fs=IMU_sampling_rates,
+            target_num_samples=target_IMU_samples,
         )
     else:
         feat_muse_larm, window_labels_larm = None, None
@@ -73,7 +87,10 @@ def run_feature_extraction(
     # Lower Back
     if lower_back_df is not None:
         feat_muse_lback, window_labels_lback = ExtractIMU_features_repetitions_based(
-            lower_back_df, "Lower_Back", fs=800
+            lower_back_df,
+            "Lower_Back",
+            fs=IMU_sampling_rates,
+            target_num_samples=target_IMU_samples,
         )
     else:
         feat_muse_lback, window_labels_lback = None, None
@@ -81,7 +98,10 @@ def run_feature_extraction(
     # Upper Back
     if upper_back_df is not None:
         feat_muse_uback, window_labels_uback = ExtractIMU_features_repetitions_based(
-            upper_back_df, "Upper_Back", fs=800
+            upper_back_df,
+            "Upper_Back",
+            fs=IMU_sampling_rates,
+            target_num_samples=target_IMU_samples,
         )
     else:
         feat_muse_uback, window_labels_uback = None, None
@@ -196,6 +216,7 @@ def run_feature_extraction_for_multiple_tests(
     expanded_fsr: bool = False,
     test_ids: str | list = "All",
     stop_if_one_fails: bool = True,
+    IMU_sampling_rates: int = 800,
 ) -> bool:
     """
     Enables feature extraction for all or a subset of participant filesets, based on their participant id. Lets the user decide which sensor files
@@ -279,6 +300,7 @@ def run_feature_extraction_for_multiple_tests(
                 left_fsr_df=df_lfsr,
                 right_fsr_df=df_rfsr,
                 expanded_fsr=expanded_fsr,
+                IMU_sampling_rates=IMU_sampling_rates,
             )
 
             if all_features is None:
@@ -300,7 +322,7 @@ def run_feature_extraction_for_multiple_tests(
 
 if __name__ == "__main__":
     # Optionally define which test ids to run feature extraction for
-    run = ["prelim_1", 'prelim_2', 'prelim_3', 'prelim_4', 'prelim_5']
+    run = ["akso_4"]
 
     #### Define scenarios to be used in feature extraction ####
     # scenario with all available sensors
@@ -316,6 +338,7 @@ if __name__ == "__main__":
     scenario_4 = ["right_arm", "lower_back", "left_fsr", "right_fsr"]
 
     # Run with selected settings!
+    # NB IMU sampling rates must be consistent across all participants. Run different sampling rates in separate runs!
     run_feature_extraction_for_multiple_tests(
-        scenario=scenario_4, expanded_fsr=True, test_ids=run
+        scenario=scenario_6, expanded_fsr=True, test_ids=run, IMU_sampling_rates=100
     )

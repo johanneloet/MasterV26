@@ -92,19 +92,20 @@ def run_pca_on_dataset(
         scores, columns=[f"PC{i+1}" for i in range(scores.shape[1])]
     )
 
-    # add labels and prefixes back in to be able to plot color coded by label and dataset later 
+    # add labels and prefixes back in to be able to plot color coded by label and dataset later
     scores_df["label"] = y.values
     scores_df["prefix"] = prefix.values
-    
+
     return scores_df, pca
 
 
 if __name__ == "__main__":
     scores, pca = run_pca_on_dataset(
-        left_arm=False, 
+        left_arm=False,
         upper_back=False,
-        expanded_fsr=True, 
-        prefixes=['prelim', 'test'])
+        expanded_fsr=True,
+        prefixes=["akso", "prelim", "test"],
+    )
     plot_scree(pca)
     plot_pca_scores(scores, pc_x=1, pc_y=2)
-    plot_pca_subplots(scores, color_by='prefix', style_by='prefix')
+    plot_pca_subplots(scores, color_by="label", style_by=None)

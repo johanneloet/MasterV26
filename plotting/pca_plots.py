@@ -1,9 +1,9 @@
-
 import matplotlib.pyplot as plt
 import math
 import numpy as np
 
 # Code developed during the preliminary PCA to study where the activities fall in different PC spaces.
+
 
 def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
     x_col = f"PC{pc_x}"
@@ -90,24 +90,25 @@ def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
 #         handles=handles,
 #         loc="center right",           # anchor the legend to the left-center
 #         #bbox_to_anchor=(1.02, 0.5),  # place it just outside the figure
-#         ncol=1  
+#         ncol=1
 #     )
-    
+
 #     plt.show()
-    
+
 
 import math
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
+
 def plot_pca_subplots(
     scores_df,
     pairs=None,
     color_by="label",
-    style_by=None,          # e.g. "prefix"
+    style_by=None,  # e.g. "prefix"
     ncols=3,
     alpha=0.6,
-    point_size=20
+    point_size=20,
 ):
     """
     Plot multiple PCA scatter subplots.
@@ -141,7 +142,7 @@ def plot_pca_subplots(
         ncols,
         figsize=(5 * ncols, 4 * nrows),
         squeeze=False,
-        constrained_layout=True
+        constrained_layout=True,
     )
 
     # Leave space for legends
@@ -156,18 +157,14 @@ def plot_pca_subplots(
         + list(plt.cm.tab20c.colors)
     )
 
-    color_map = {
-        lab: cmap[i % len(cmap)]
-        for i, lab in enumerate(color_labels)
-    }
+    color_map = {lab: cmap[i % len(cmap)] for i, lab in enumerate(color_labels)}
 
     # ---- MARKER SETUP (optional) ----
     if style_by:
         style_labels = sorted(scores_df[style_by].unique())
         marker_list = ["o", "X", "s", "D", "^", "v", "P", "*"]
         marker_map = {
-            lab: marker_list[i % len(marker_list)]
-            for i, lab in enumerate(style_labels)
+            lab: marker_list[i % len(marker_list)] for i, lab in enumerate(style_labels)
         }
 
     # ---- PLOTTING LOOP ----
@@ -183,9 +180,7 @@ def plot_pca_subplots(
 
             if style_by:
                 for style_lab in style_labels:
-                    subset = subset_color[
-                        subset_color[style_by] == style_lab
-                    ]
+                    subset = subset_color[subset_color[style_by] == style_lab]
 
                     ax.scatter(
                         subset[x_col],
@@ -194,7 +189,7 @@ def plot_pca_subplots(
                         marker=marker_map[style_lab],
                         alpha=alpha,
                         s=point_size,
-                        edgecolor="none"
+                        edgecolor="none",
                     )
             else:
                 ax.scatter(
@@ -203,7 +198,7 @@ def plot_pca_subplots(
                     color=color_map[color_lab],
                     alpha=alpha,
                     s=point_size,
-                    edgecolor="none"
+                    edgecolor="none",
                 )
 
         ax.set_xlabel(x_col)
@@ -219,42 +214,39 @@ def plot_pca_subplots(
 
     # Color legend (movement)
     color_handles = [
-        Line2D([0], [0],
-               marker="o",
-               color="w",
-               markerfacecolor=color_map[lab],
-               markersize=8,
-               label=lab)
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=color_map[lab],
+            markersize=8,
+            label=lab,
+        )
         for lab in color_labels
     ]
 
-    fig.legend(
-        handles=color_handles,
-        loc="center right",
-        title=color_by,
-        ncol=1
-    )
+    fig.legend(handles=color_handles, loc="center right", title=color_by, ncol=1)
 
     # Marker legend (prefix)
     if style_by:
         marker_handles = [
-            Line2D([0], [0],
-                   marker=marker_map[lab],
-                   color="black",
-                   linestyle="None",
-                   markersize=8,
-                   label=lab)
+            Line2D(
+                [0],
+                [0],
+                marker=marker_map[lab],
+                color="black",
+                linestyle="None",
+                markersize=8,
+                label=lab,
+            )
             for lab in style_labels
         ]
 
-        fig.legend(
-            handles=marker_handles,
-            loc="lower right",
-            title=style_by,
-            ncol=1
-        )
+        fig.legend(handles=marker_handles, loc="lower right", title=style_by, ncol=1)
 
     plt.show()
+
 
 def plot_scree(pca, max_pcs=None):
     """

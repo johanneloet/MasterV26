@@ -10,7 +10,7 @@ def detect_spikes(file_path):
 
     df["acc_mag"] = np.sqrt(df["Axl.X"] ** 2 + df["Axl.Y"] ** 2 + df["Axl.Z"] ** 2)
 
-    peaks, _ = find_peaks(df["acc_mag"], height=3000, distance=1000)
+    peaks, _ = find_peaks(df["acc_mag"], height=2000, distance=500)
 
     return df, peaks
 

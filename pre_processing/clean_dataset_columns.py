@@ -101,7 +101,7 @@ def clean_and_rename_columns(
 
 if __name__ == "__main__":
     for test_id, paths in FILES.items():
-        if test_id == "prelim_1":  # redo only a single test - fill in the name here
+        if test_id == "akso_4":  # redo only a single test - fill in the name here
             # clean files
             cleaned_dfs = clean_and_rename_columns(
                 left_arm_path=paths.get("left_arm"),
