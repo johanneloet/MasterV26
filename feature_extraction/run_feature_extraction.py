@@ -3,10 +3,12 @@ import pandas as pd
 from feature_extraction.ExtractIMU_Features import (
     ExtractIMU_Features,
     ExtractIMU_features_repetitions_based,
+    ExtractIMU_features_window_based
 )
 from feature_extraction.ExtractPressure_Features import (
     ExtractPressure_Features,
     ExtractPressure_Features_repetitions_based,
+    ExtractPressure_Features_window_based
 )
 from feature_extraction.get_paths import get_test_file_paths, get_one_foler_path
 from feature_extraction.create_feature_windows import drop_last_for_label
@@ -38,7 +40,17 @@ def run_feature_extraction(
     right_fsr_df=None,
     expanded_fsr=False,
     IMU_sampling_rates=800,
+    mode = 'Window',
+    window_sec = 3.5,
+    resample_IMU = True,
+    target_resampling_rate = 100,
+    use_rep_id = True
+
 ):
+    """
+    Allows modes 'Window' which uses fixed seconds based windows WITHIN EACH rep_id or label, or 'Repetition'. 'Repetition' corresponds to the
+    methodology from specialization project.
+    """
     print("Starting...")
     # define constants
     base_IMU_rate = 800
@@ -62,95 +74,214 @@ def run_feature_extraction(
             return
         else:
             print("Continuing...")
-
-    if right_arm_df is not None:
-        feat_muse_rarm, window_labels_rarm = ExtractIMU_features_repetitions_based(
-            right_arm_df,
-            "R_Arm",
-            fs=IMU_sampling_rates,
-            target_num_samples=target_IMU_samples,
-        )
-    else:
-        feat_muse_rarm, window_labels_rarm = None, None
-
-        # Left Arm
-    if left_arm_df is not None:
-        feat_muse_larm, window_labels_larm = ExtractIMU_features_repetitions_based(
-            left_arm_df,
-            "L_Arm",
-            fs=IMU_sampling_rates,
-            target_num_samples=target_IMU_samples,
-        )
-    else:
-        feat_muse_larm, window_labels_larm = None, None
-
-    # Lower Back
-    if lower_back_df is not None:
-        feat_muse_lback, window_labels_lback = ExtractIMU_features_repetitions_based(
-            lower_back_df,
-            "Lower_Back",
-            fs=IMU_sampling_rates,
-            target_num_samples=target_IMU_samples,
-        )
-    else:
-        feat_muse_lback, window_labels_lback = None, None
-
-    # Upper Back
-    if upper_back_df is not None:
-        feat_muse_uback, window_labels_uback = ExtractIMU_features_repetitions_based(
-            upper_back_df,
-            "Upper_Back",
-            fs=IMU_sampling_rates,
-            target_num_samples=target_IMU_samples,
-        )
-    else:
-        feat_muse_uback, window_labels_uback = None, None
-
-    # Left FSR
-    if left_fsr_df is not None:
-        if expanded_fsr == False:
-            feat_fsr_left, window_labels_fsr_left = (
-                ExtractPressure_Features_repetitions_based(
-                    left_fsr_df, "Left", mean_fsr=True, fs=100, feature_space="baseline"
-                )
+    # SEPARATE BY MODES
+    if mode == 'Repetition':
+        if right_arm_df is not None:
+            feat_muse_rarm, window_labels_rarm = ExtractIMU_features_repetitions_based(
+                right_arm_df,
+                "R_Arm",
+                fs=IMU_sampling_rates,
+                target_num_samples=target_IMU_samples,
             )
-        elif expanded_fsr == True:
-            feat_fsr_left, window_labels_fsr_left = (
-                ExtractPressure_Features_repetitions_based(
-                    left_fsr_df,
-                    "Left",
-                    mean_fsr=True,
-                    fs=100,
-                    feature_space="expanded+baseline",
-                )
-            )
-    else:
-        feat_fsr_left, window_labels_fsr_left = None, None
+        else:
+            feat_muse_rarm, window_labels_rarm = None, None
 
-    # Right FSR
-    if right_fsr_df is not None:
-        if expanded_fsr == False:
-            feat_fsr_right, window_labels_fsr_right = (
-                ExtractPressure_Features_repetitions_based(
-                    right_fsr_df,
-                    "Right",
-                    mean_fsr=True,
-                    fs=100,
-                    feature_space="baseline",
-                )
+            # Left Arm
+        if left_arm_df is not None:
+            feat_muse_larm, window_labels_larm = ExtractIMU_features_repetitions_based(
+                left_arm_df,
+                "L_Arm",
+                fs=IMU_sampling_rates,
+                target_num_samples=target_IMU_samples,
             )
-        elif expanded_fsr == True:
-            feat_fsr_right, window_labels_fsr_right = (
-                ExtractPressure_Features_repetitions_based(
-                    right_fsr_df,
-                    "Right",
-                    mean_fsr=True,
-                    fs=100,
-                    feature_space="expanded+baseline",
-                )
+        else:
+            feat_muse_larm, window_labels_larm = None, None
+
+        # Lower Back
+        if lower_back_df is not None:
+            feat_muse_lback, window_labels_lback = ExtractIMU_features_repetitions_based(
+                lower_back_df,
+                "Lower_Back",
+                fs=IMU_sampling_rates,
+                target_num_samples=target_IMU_samples,
             )
+        else:
+            feat_muse_lback, window_labels_lback = None, None
+
+        # Upper Back
+        if upper_back_df is not None:
+            feat_muse_uback, window_labels_uback = ExtractIMU_features_repetitions_based(
+                upper_back_df,
+                "Upper_Back",
+                fs=IMU_sampling_rates,
+                target_num_samples=target_IMU_samples,
+            )
+        else:
+            feat_muse_uback, window_labels_uback = None, None
+
+        # Left FSR
+        if left_fsr_df is not None:
+            if expanded_fsr == False:
+                feat_fsr_left, window_labels_fsr_left = (
+                    ExtractPressure_Features_repetitions_based(
+                        left_fsr_df, "Left", mean_fsr=True, fs=100, feature_space="baseline"
+                    )
+                )
+            elif expanded_fsr == True:
+                feat_fsr_left, window_labels_fsr_left = (
+                    ExtractPressure_Features_repetitions_based(
+                        left_fsr_df,
+                        "Left",
+                        mean_fsr=True,
+                        fs=100,
+                        feature_space="expanded+baseline",
+                    )
+                )
+        else:
+            feat_fsr_left, window_labels_fsr_left = None, None
+
+        # Right FSR
+        if right_fsr_df is not None:
+            if expanded_fsr == False:
+                feat_fsr_right, window_labels_fsr_right = (
+                    ExtractPressure_Features_repetitions_based(
+                        right_fsr_df,
+                        "Right",
+                        mean_fsr=True,
+                        fs=100,
+                        feature_space="baseline",
+                    )
+                )
+            elif expanded_fsr == True:
+                feat_fsr_right, window_labels_fsr_right = (
+                    ExtractPressure_Features_repetitions_based(
+                        right_fsr_df,
+                        "Right",
+                        mean_fsr=True,
+                        fs=100,
+                        feature_space="expanded+baseline",
+                    )
+                )
+        else:
+            feat_fsr_right, window_labels_fsr_right = None, None
+
+
+    elif mode == 'Window':
+        if right_arm_df is not None:
+            feat_muse_rarm, window_labels_rarm = ExtractIMU_features_window_based(
+                imu_data=right_arm_df,
+                sensor_name="R_arm",
+                fs=IMU_sampling_rates,
+                window_sec=window_sec,
+                use_rep_id=use_rep_id,
+                reample_signal=resample_IMU,
+                target_fs=target_resampling_rate,
+            )
+        else:
+            feat_muse_rarm, window_labels_rarm = None, None
+
+            # Left Arm
+        if left_arm_df is not None:
+            feat_muse_larm, window_labels_larm = ExtractIMU_features_window_based(
+                imu_data=left_arm_df,
+                sensor_name="L_arm",
+                fs=IMU_sampling_rates,
+                window_sec=window_sec,
+                use_rep_id=use_rep_id,
+                reample_signal=resample_IMU,
+                target_fs=target_resampling_rate,
+            )
+        else:
+            feat_muse_larm, window_labels_larm = None, None
+
+        # Lower Back
+        if lower_back_df is not None:
+            feat_muse_lback, window_labels_lback = ExtractIMU_features_window_based(
+                imu_data=lower_back_df,
+                sensor_name="Lower_back",
+                fs=IMU_sampling_rates,
+                window_sec=window_sec,
+                use_rep_id=use_rep_id,
+                reample_signal=resample_IMU,
+                target_fs=target_resampling_rate,
+            )
+        else:
+            feat_muse_lback, window_labels_lback = None, None
+
+        # Upper Back
+        if upper_back_df is not None:
+            feat_muse_uback, window_labels_uback = ExtractIMU_features_window_based(
+                imu_data=upper_back_df,
+                sensor_name="Upper_back",
+                fs=IMU_sampling_rates,
+                window_sec=window_sec,
+                use_rep_id=use_rep_id,
+                reample_signal=resample_IMU,
+                target_fs=target_resampling_rate,
+            )
+        else:
+            feat_muse_uback, window_labels_uback = None, None
+
+        # Left FSR
+        if left_fsr_df is not None:
+            if expanded_fsr == False:
+                feat_fsr_left, window_labels_fsr_left = (
+                    ExtractPressure_Features_window_based(
+                        fsr_data = left_fsr_df,
+                        sensor_name = "Left",
+                        mean_fsr=True,
+                        fs=100, 
+                        feature_space="baseline",
+                        window_sec=window_sec,
+                        use_rep_id=use_rep_id
+                    )
+                )
+            elif expanded_fsr == True:
+                feat_fsr_left, window_labels_fsr_left = (
+                    ExtractPressure_Features_window_based(
+                        fsr_data = left_fsr_df,
+                        sensor_name = "Left",
+                        mean_fsr=True,
+                        fs=100, 
+                        feature_space="expanded+baseline",
+                        window_sec=window_sec,
+                        use_rep_id=use_rep_id
+                    )
+                )
+        else:
+            feat_fsr_left, window_labels_fsr_left = None, None
+
+        # Right FSR
+        if right_fsr_df is not None:
+            if expanded_fsr == False:
+                feat_fsr_right, window_labels_fsr_right = (
+                    ExtractPressure_Features_window_based(
+                        fsr_data = right_fsr_df,
+                        sensor_name = "Right",
+                        mean_fsr=True,
+                        fs=100, 
+                        feature_space="baseline",
+                        window_sec=window_sec,
+                        use_rep_id=use_rep_id
+                    )
+                )
+            elif expanded_fsr == True:
+                feat_fsr_right, window_labels_fsr_right = (
+                    ExtractPressure_Features_window_based(
+                        fsr_data = right_fsr_df,
+                        sensor_name = "Right",
+                        mean_fsr=True,
+                        fs=100, 
+                        feature_space="expanded+baseline",
+                        window_sec=window_sec,
+                        use_rep_id=use_rep_id
+                    )
+                )
+        else:
+            feat_fsr_right, window_labels_fsr_right = None, None
+
     else:
-        feat_fsr_right, window_labels_fsr_right = None, None
+        raise ValueError('Mode for feature extraction is not recognized, must be either Window or Repetition.')
 
     features_dict = {
         "right_arm": feat_muse_rarm,
@@ -216,63 +347,53 @@ def run_feature_extraction_for_multiple_tests(
     expanded_fsr: bool = False,
     test_ids: str | list = "All",
     stop_if_one_fails: bool = True,
-    IMU_sampling_rates: int = 800,
+    IMU_sampling_rate: int = 800,
+
+    # ⭐ NEW PARAMETERS
+    mode: str = "Window",          # "Repetition" or "Window"
+    resample_signal: bool = True,
+    target_fs: int = 100,
+    window_sec: float = 3.5,
+    use_rep_id: bool = True,
 ) -> bool:
-    """
-    Enables feature extraction for all or a subset of participant filesets, based on their participant id. Lets the user decide which sensor files
-    should be included and whether to include the expanded fsr feature set or not.
 
-    Parameters
-    -----------
-    - scenario: list on the form ['left_arm', 'right_arm', 'upper_back' ...] defines for which sensors to extract features for. You mustassure that the sensors
-    you define in the scenario are actually available for all the participants you wish to run for. Otherwise exeptions will occur in the participants for which not
-    all files are present. Accepted string values in the list are "left_arm", "right_arm", "upper_back", "lower_back", "left_fsr", "right_fsr".
-    - expanded_fsr: bool defining whether or not to include he expanded fsr feature set
-    - test_ids: str default is "All", meaning include every test participant directory found by get_test_file_paths. Otherwise set it to a list of specific participant ids
-    and only those will be run.
-    - stop_if_one_fails: bool default is true. Whether or not to continue to the next participant if one fails. If true, the function exits upon a single failure.
-
-    Returns
-    -------
-    bool: True if feature extraction completed. False if stop_if_one_fails is activated and any et of files fails.
-    """
     file_dict = get_test_file_paths()
     start = time.time()
 
     for test_id, paths in file_dict.items():
+
         if test_ids != "All" and test_id not in test_ids:
             continue
+
         print(f"\n--- Running feature extraction for {test_id} ---")
+
         try:
-            # Get data files. Right arm and arm are interpreted as the same. Use right arm as naming convenion going forward.
-            # Left and right are interpreted as left and right fsr.
-            # Back is interpreted as lower back. use upper/lower as convention going forward.
             right_arm_path = (
                 paths.get("right_arm") or paths.get("arm")
-                if "right_arm" in scenario
-                else False
-            )
-            left_arm_path = paths.get("left_arm") if "left_arm" in scenario else False
-            lower_back_path = (
-                paths.get("lower_back") or paths.get("back")
-                if "lower_back" in scenario
-                else False
-            )
-            upper_back_path = (
-                paths.get("upper_back") if "upper_back" in scenario else False
-            )
-            left_fsr_path = (
-                paths.get("left") or paths.get("left_fsr")
-                if "left_fsr" in scenario
-                else False
-            )
-            right_fsr_path = (
-                paths.get("right") or paths.get("right_fsr")
-                if "right_fsr" in scenario
-                else False
+                if "right_arm" in scenario else None
             )
 
-            # Load CSVs if files exist
+            left_arm_path = paths.get("left_arm") if "left_arm" in scenario else None
+
+            lower_back_path = (
+                paths.get("lower_back") or paths.get("back")
+                if "lower_back" in scenario else None
+            )
+
+            upper_back_path = (
+                paths.get("upper_back") if "upper_back" in scenario else None
+            )
+
+            left_fsr_path = (
+                paths.get("left") or paths.get("left_fsr")
+                if "left_fsr" in scenario else None
+            )
+
+            right_fsr_path = (
+                paths.get("right") or paths.get("right_fsr")
+                if "right_fsr" in scenario else None
+            )
+
             df_rarm = pd.read_csv(right_arm_path) if right_arm_path else None
             df_larm = pd.read_csv(left_arm_path) if left_arm_path else None
             df_lback = pd.read_csv(lower_back_path) if lower_back_path else None
@@ -283,13 +404,11 @@ def run_feature_extraction_for_multiple_tests(
             feat_dir = get_one_foler_path(test_id)
             print(f"Directory to save features: {feat_dir}")
 
-            # Drop rows where rep_id == None for files that exist
-            for df in [df_rarm, df_larm, df_lback, df_uback, df_lfsr, df_rfsr]:
-                if df is not None and "rep_id" in df.columns:
-                    df.dropna(subset=["rep_id"], inplace=True)
+            if mode == "Repetition":
+                for df in [df_rarm, df_larm, df_lback, df_uback, df_lfsr, df_rfsr]:
+                    if df is not None and "rep_id" in df.columns:
+                        df.dropna(subset=["rep_id"], inplace=True)
 
-            # Run feature extraction with flexible inputs
-            # Features are saved to a .csv as a final step in run_feature_extraction.
             all_features = run_feature_extraction(
                 output_dir=feat_dir,
                 test_id=test_id,
@@ -300,7 +419,14 @@ def run_feature_extraction_for_multiple_tests(
                 left_fsr_df=df_lfsr,
                 right_fsr_df=df_rfsr,
                 expanded_fsr=expanded_fsr,
-                IMU_sampling_rates=IMU_sampling_rates,
+                IMU_sampling_rate=IMU_sampling_rate,
+
+                # ⭐ NEW PIPELINE OPTIONS
+                mode=mode,
+                resample_signal=resample_signal,
+                target_fs=target_fs,
+                window_sec=window_sec,
+                use_rep_id=use_rep_id,
             )
 
             if all_features is None:
@@ -311,18 +437,26 @@ def run_feature_extraction_for_multiple_tests(
         except Exception as e:
             print(f"Failed for {test_id}: {e}")
             if stop_if_one_fails:
-                return False  # stop everything if one test fails
+                return False
 
     end = time.time()
-    elapsed = end - start
-    print(f"\n🕒 Done! Total time used: {elapsed:.2f} seconds")
+    print(f"\n🕒 Done! Total time used: {end - start:.2f} seconds")
 
     return True
 
-
 if __name__ == "__main__":
     # Optionally define which test ids to run feature extraction for
-    run = ["akso_4"]
+    run = [
+        'prelim_1',
+        'prelim_2',
+        'prelim_3',
+        'prelim_4',
+        'prelim_5',
+        'akso_1',
+        'akso_2',
+        'akso_3',
+        #'akso_4'
+    ]
 
     #### Define scenarios to be used in feature extraction ####
     # scenario with all available sensors
@@ -337,8 +471,27 @@ if __name__ == "__main__":
     # scenario with only 4 sensors (the old setup)
     scenario_4 = ["right_arm", "lower_back", "left_fsr", "right_fsr"]
 
+
+    # Define settings
+    mode = "Window"              # "window" or "repetition"
+    expanded_fsr = True
+    imu_sampling_rate = 800   # original sampling rate of the files in this run
+    resample_signal = True    # set True if these files need IMU resampling
+    target_fs = 100              # target IMU fs after resampling
+    window_sec = 3.5
+    use_rep_id = True            # if False, use consecutive label runs instead
+
     # Run with selected settings!
     # NB IMU sampling rates must be consistent across all participants. Run different sampling rates in separate runs!
     run_feature_extraction_for_multiple_tests(
-        scenario=scenario_6, expanded_fsr=True, test_ids=run, IMU_sampling_rates=100
+        scenario=scenario_6,
+        expanded_fsr=expanded_fsr,
+        test_ids=run,
+        stop_if_one_fails=True,
+        IMU_sampling_rate=imu_sampling_rate,
+        mode=mode,
+        resample_signal=resample_signal,
+        target_fs=target_fs,
+        window_sec=window_sec,
+        use_rep_id=use_rep_id,
     )

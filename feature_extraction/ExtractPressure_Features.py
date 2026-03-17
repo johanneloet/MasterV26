@@ -21,6 +21,7 @@ from feature_extraction.fsr_features import (
 )
 from feature_extraction.resample_windows import downsample_channel
 from feature_extraction.create_feature_windows import build_boundaries
+from feature_extraction.create_fixed_length_feature_windows import build_containers, generate_fixed_length_windows_centered
 
 "Based on Royas code for extracting IMU features"
 
@@ -312,5 +313,162 @@ def ExtractPressure_Features_repetitions_based(
         all_window_features.append(window_features)
 
     feature_df = pd.DataFrame(all_window_features)
+
+    return feature_df, all_window_labels
+
+
+def ExtractPressure_Features_window_based(
+    fsr_data,
+    sensor_name,
+    fs,
+    window_sec=3.5,
+    use_rep_id=True,
+    feature_space="baseline",   # "baseline" or "expanded+baseline"
+    mean_fsr=True,
+):
+    """
+    Window-based FSR feature extraction (no resampling).
+
+    Parameters
+    ----------
+    fsr_data : pd.DataFrame or str
+        FSR dataframe or path to csv.
+    sensor_name : str
+        Sensor/side name, e.g. "Left" or "Right".
+    fs : int or float
+        Sampling rate.
+    window_sec : float
+        Window length in seconds.
+    use_rep_id : bool
+        If True, build containers from rep_id when available.
+        Otherwise use consecutive runs of the same label.
+    feature_space : str
+        Either "baseline" or "expanded+baseline".
+    mean_fsr : bool
+        If True, compute baseline features from the mean FSR signal.
+        Currently expected to be True.
+
+    Returns
+    -------
+    feature_df : pd.DataFrame
+        Metadata columns + feature columns, one row per window.
+    all_window_labels : list
+        Label per window.
+    """
+
+    if feature_space not in ["baseline", "expanded+baseline"]:
+        raise ValueError("feature_space must be either 'baseline' or 'expanded+baseline'")
+
+    if not mean_fsr:
+        raise ValueError("Currently only mean_fsr=True is supported.")
+
+    if not isinstance(fsr_data, pd.DataFrame):
+        fsr_data = pd.read_csv(fsr_data)
+
+    fsr_data = fsr_data.reset_index(drop=True).copy()
+
+    # -----------------------------------------------------
+    # Build containers and windows
+    # -----------------------------------------------------
+    containers = build_containers(fsr_data, use_rep_id=use_rep_id)
+
+    windows = generate_fixed_length_windows_centered(
+        containers=containers,
+        fs=fs,
+        window_sec=window_sec,
+    )
+
+    if windows.empty:
+        print(f"No windows generated for FSR {sensor_name}")
+        return pd.DataFrame(), []
+
+    # -----------------------------------------------------
+    # Select FSR columns
+    # -----------------------------------------------------
+    fsr_columns = [f"Fsr.{str(i).zfill(2)}" for i in range(1, 17)]
+    fsr_df = fsr_data[fsr_columns]
+
+    all_window_features = []
+    all_window_labels = []
+    all_meta = []
+
+    # -----------------------------------------------------
+    # Loop over windows
+    # -----------------------------------------------------
+    for _, w in windows.iterrows():
+        s = int(w["start_idx"])
+        e = int(w["end_idx"])
+
+        fsr_win = fsr_df.iloc[s:e]
+        label = w["label"]
+        rep_id = w["rep_id"]
+
+        # -----------------------------
+        # Metadata
+        # -----------------------------
+        all_meta.append(
+            {
+                "label": label,
+                "rep_id": rep_id,
+                "container_id": w["container_id"],
+                "window_id": w["window_id"],
+                "start_idx": s,
+                "end_idx": e,
+            }
+        )
+        all_window_labels.append(label)
+
+        # -----------------------------
+        # Baseline features
+        # -----------------------------
+        mean_signal = fsr_win.mean(axis=1)
+
+        baseline_time_feats = get_Time_Domain_features_of_signal(
+            mean_signal,
+            f"fsr_mean_{sensor_name}",
+        )
+
+        baseline_freq_feats = get_Freq_Domain_features_of_signal(
+            mean_signal,
+            f"fsr_mean_{sensor_name}",
+            fs,
+        )
+
+        baseline_features = {
+            **baseline_time_feats,
+            **baseline_freq_feats,
+        }
+
+        # -----------------------------
+        # Expanded features (optional)
+        # -----------------------------
+        if feature_space == "expanded+baseline":
+            tmp = fsr_win.copy()
+            tmp["label"] = label
+            tmp["rep_id"] = rep_id
+
+            per_sample_df = per_sample_features(tmp, sensor_name, None)
+
+            expanded_features = aggregate_per_window(
+                per_sample_df,
+                sensor_name,
+                s,
+                e,
+            )
+
+            window_features = {
+                **baseline_features,
+                **expanded_features,
+            }
+
+        else:  # baseline
+            window_features = baseline_features
+
+        all_window_features.append(window_features)
+
+    feature_df = pd.DataFrame(all_window_features)
+    meta_df = pd.DataFrame(all_meta)
+
+    feature_df = pd.concat([meta_df, feature_df], axis=1)
 
     return feature_df, all_window_labels

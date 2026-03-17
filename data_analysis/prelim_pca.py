@@ -104,7 +104,7 @@ if __name__ == "__main__":
         left_arm=False,
         upper_back=False,
         expanded_fsr=True,
-        prefixes=["akso", "prelim", "test"],
+        prefixes=["akso", "prelim"],
     )
     plot_scree(pca)
     plot_pca_scores(scores, pc_x=1, pc_y=2)
