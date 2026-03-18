@@ -167,6 +167,8 @@ def run_feature_extraction(
 
 
     elif mode == 'Window':
+
+        print('begin feature extraction right')
         if right_arm_df is not None:
             feat_muse_rarm, window_labels_rarm = ExtractIMU_features_window_based(
                 imu_data=right_arm_df,
@@ -174,13 +176,14 @@ def run_feature_extraction(
                 fs=IMU_sampling_rates,
                 window_sec=window_sec,
                 use_rep_id=use_rep_id,
-                reample_signal=resample_IMU,
+                resample_signal=resample_IMU,
                 target_fs=target_resampling_rate,
             )
         else:
             feat_muse_rarm, window_labels_rarm = None, None
 
             # Left Arm
+       
         if left_arm_df is not None:
             feat_muse_larm, window_labels_larm = ExtractIMU_features_window_based(
                 imu_data=left_arm_df,
@@ -188,7 +191,7 @@ def run_feature_extraction(
                 fs=IMU_sampling_rates,
                 window_sec=window_sec,
                 use_rep_id=use_rep_id,
-                reample_signal=resample_IMU,
+                resample_signal=resample_IMU,
                 target_fs=target_resampling_rate,
             )
         else:
@@ -202,7 +205,7 @@ def run_feature_extraction(
                 fs=IMU_sampling_rates,
                 window_sec=window_sec,
                 use_rep_id=use_rep_id,
-                reample_signal=resample_IMU,
+                resample_signal=resample_IMU,
                 target_fs=target_resampling_rate,
             )
         else:
@@ -216,7 +219,7 @@ def run_feature_extraction(
                 fs=IMU_sampling_rates,
                 window_sec=window_sec,
                 use_rep_id=use_rep_id,
-                reample_signal=resample_IMU,
+                resample_signal=resample_IMU,
                 target_fs=target_resampling_rate,
             )
         else:
@@ -334,7 +337,7 @@ def run_feature_extraction(
     sensor_combo_scenario = "_".join(available_sensors)
 
     output_filename = (
-        f"Features_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+        f"Features_{mode}_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
     )
 
     all_features.to_csv(Path(output_dir) / output_filename)
@@ -372,6 +375,9 @@ def run_feature_extraction_for_multiple_tests(
                 paths.get("right_arm") or paths.get("arm")
                 if "right_arm" in scenario else None
             )
+            print('right arm path', right_arm_path)
+            if right_arm_path:
+                print("size:", Path(right_arm_path).stat().st_size)
 
             left_arm_path = paths.get("left_arm") if "left_arm" in scenario else None
 
@@ -401,6 +407,8 @@ def run_feature_extraction_for_multiple_tests(
             df_lfsr = pd.read_csv(left_fsr_path) if left_fsr_path else None
             df_rfsr = pd.read_csv(right_fsr_path) if right_fsr_path else None
 
+            print(df_rarm.head())
+
             feat_dir = get_one_foler_path(test_id)
             print(f"Directory to save features: {feat_dir}")
 
@@ -419,12 +427,12 @@ def run_feature_extraction_for_multiple_tests(
                 left_fsr_df=df_lfsr,
                 right_fsr_df=df_rfsr,
                 expanded_fsr=expanded_fsr,
-                IMU_sampling_rate=IMU_sampling_rate,
+                IMU_sampling_rates=IMU_sampling_rate,
 
                 # ⭐ NEW PIPELINE OPTIONS
                 mode=mode,
-                resample_signal=resample_signal,
-                target_fs=target_fs,
+                resample_IMU=resample_signal,
+                target_resampling_rate=target_fs,
                 window_sec=window_sec,
                 use_rep_id=use_rep_id,
             )
@@ -452,10 +460,14 @@ if __name__ == "__main__":
         'prelim_3',
         'prelim_4',
         'prelim_5',
-        'akso_1',
-        'akso_2',
-        'akso_3',
-        #'akso_4'
+        'aksoprotocol_1',
+        'aksoprotocol_2',
+        'aksoprotocol_3',
+        'aksoprotocol_4',
+        # 'aksowork_1',
+        # 'aksowork_2',
+        # 'aksowork_3',
+        # 'aksowork_4'
     ]
 
     #### Define scenarios to be used in feature extraction ####
@@ -475,11 +487,11 @@ if __name__ == "__main__":
     # Define settings
     mode = "Window"              # "window" or "repetition"
     expanded_fsr = True
-    imu_sampling_rate = 800   # original sampling rate of the files in this run
-    resample_signal = True    # set True if these files need IMU resampling
+    imu_sampling_rate = 100 # original sampling rate of the files in this run
+    resample_signal = False  # set True if these files need IMU resampling
     target_fs = 100              # target IMU fs after resampling
     window_sec = 3.5
-    use_rep_id = True            # if False, use consecutive label runs instead
+    use_rep_id = True         # if False, use consecutive label runs instead
 
     # Run with selected settings!
     # NB IMU sampling rates must be consistent across all participants. Run different sampling rates in separate runs!

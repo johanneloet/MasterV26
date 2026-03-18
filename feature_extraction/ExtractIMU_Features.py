@@ -1192,19 +1192,22 @@ def ExtractIMU_features_window_based(
         imu_data = pd.read_csv(imu_data)
 
     imu_data = imu_data.reset_index(drop=True).copy()
+    print(imu_data.head())
 
-
+    #print(f"BEFORE IMU data rep ids are: {imu_data['rep_id'].unique()}")
     if resample_signal:
         imu_data = resample_imu_dataframe(
             imu_data,
             original_fs=fs,
             target_fs=target_fs,
-            time_col="ReconstructedTime",
         )
         fs = target_fs
-
+    
+    #print(f"IMU data rep ids are: {imu_data['rep_id'].unique()}")
+    print('start build containers')
     containers = build_containers(imu_data, use_rep_id=use_rep_id)
 
+    print('generate fixed legth wins')
     windows = generate_fixed_length_windows_centered(
         containers=containers,
         fs=fs,
@@ -1214,7 +1217,6 @@ def ExtractIMU_features_window_based(
     if windows.empty:
         print(f"No valid windows generated for sensor {sensor_name}.")
         return pd.DataFrame(), []
-
 
     accel_X = imu_data["Axl.X"]
     accel_Y = imu_data["Axl.Y"]
@@ -1237,18 +1239,34 @@ def ExtractIMU_features_window_based(
         end_idx = int(row["end_idx"])
         window_label = row["label"]
 
-        all_window_meta.append(
-            {
-                "label": row["label"],
-                "rep_id": row["rep_id"],
-                "container_id": row["container_id"],
-                "window_id": row["window_id"],
-                "start_idx": start_idx,
-                "end_idx": end_idx,
-            }
-        )
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
+        # plt.title(f"{imu_data.iloc[start_idx]['label']}_{imu_data.iloc[start_idx]['rep_id']}")
+        # plt.show()
+        if use_rep_id == True:
+            all_window_meta.append(
+                {
+                    "label": row["label"],
+                    "rep_id": row["rep_id"],
+                    "container_id": row["container_id"],
+                    "window_id": row["window_id"],
+                    "start_idx": start_idx,
+                    "end_idx": end_idx,
+                }
+                )
+        else: 
+            all_window_meta.append(
+                {
+                    "label": row["label"],
+                    "container_id": row["container_id"],
+                    "window_id": row["window_id"],
+                    "start_idx": start_idx,
+                    "end_idx": end_idx,
+                }
+                )
         all_window_labels.append(window_label)
-
+        print('begine getting the windows')
 
         window_accel_X = accel_X[start_idx:end_idx]
         window_accel_Y = accel_Y[start_idx:end_idx]
@@ -1262,7 +1280,7 @@ def ExtractIMU_features_window_based(
         window_mag_Y = mag_Y[start_idx:end_idx]
         window_mag_Z = mag_Z[start_idx:end_idx]
 
-
+        print('getting time domain fts')
         window_features_accel_X_Time = get_Time_Domain_features_of_signal(
             window_accel_X, f"accel_X_{sensor_name}"
         )
@@ -1283,15 +1301,15 @@ def ExtractIMU_features_window_based(
             window_gyro_Z, f"gyro_Z_{sensor_name}"
         )
 
-        window_features_mag_X_Time = get_Time_Domain_features_of_signal(
-            window_mag_X, f"mag_X_{sensor_name}"
-        )
-        window_features_mag_Y_Time = get_Time_Domain_features_of_signal(
-            window_mag_Y, f"mag_Y_{sensor_name}"
-        )
-        window_features_mag_Z_Time = get_Time_Domain_features_of_signal(
-            window_mag_Z, f"mag_Z_{sensor_name}"
-        )
+        # window_features_mag_X_Time = get_Time_Domain_features_of_signal(
+        #     window_mag_X, f"mag_X_{sensor_name}"
+        # )
+        # window_features_mag_Y_Time = get_Time_Domain_features_of_signal(
+        #     window_mag_Y, f"mag_Y_{sensor_name}"
+        # )
+        # window_features_mag_Z_Time = get_Time_Domain_features_of_signal(
+        #     window_mag_Z, f"mag_Z_{sensor_name}"
+        # )
 
         window_features_accel_X_Freq = get_Freq_Domain_features_of_signal(
             window_accel_X, f"accel_X_{sensor_name}", fs
@@ -1313,15 +1331,15 @@ def ExtractIMU_features_window_based(
             window_gyro_Z, f"gyro_Z_{sensor_name}", fs
         )
 
-        window_features_mag_X_Freq = get_Freq_Domain_features_of_signal(
-            window_mag_X, f"mag_X_{sensor_name}", fs
-        )
-        window_features_mag_Y_Freq = get_Freq_Domain_features_of_signal(
-            window_mag_Y, f"mag_Y_{sensor_name}", fs
-        )
-        window_features_mag_Z_Freq = get_Freq_Domain_features_of_signal(
-            window_mag_Z, f"mag_Z_{sensor_name}", fs
-        )
+        # window_features_mag_X_Freq = get_Freq_Domain_features_of_signal(
+        #     window_mag_X, f"mag_X_{sensor_name}", fs
+        # )
+        # window_features_mag_Y_Freq = get_Freq_Domain_features_of_signal(
+        #     window_mag_Y, f"mag_Y_{sensor_name}", fs
+        # )
+        # window_features_mag_Z_Freq = get_Freq_Domain_features_of_signal(
+        #     window_mag_Z, f"mag_Z_{sensor_name}", fs
+        # )
 
         # Merge features
         if time_only:
@@ -1332,9 +1350,9 @@ def ExtractIMU_features_window_based(
                 **window_features_gyro_X_Time,
                 **window_features_gyro_Y_Time,
                 **window_features_gyro_Z_Time,
-                **window_features_mag_X_Time,
-                **window_features_mag_Y_Time,
-                **window_features_mag_Z_Time,
+                # **window_features_mag_X_Time,
+                # **window_features_mag_Y_Time,
+                # **window_features_mag_Z_Time,
             }
         elif freq_only:
             window_features = {
@@ -1344,9 +1362,9 @@ def ExtractIMU_features_window_based(
                 **window_features_gyro_X_Freq,
                 **window_features_gyro_Y_Freq,
                 **window_features_gyro_Z_Freq,
-                **window_features_mag_X_Freq,
-                **window_features_mag_Y_Freq,
-                **window_features_mag_Z_Freq,
+                # **window_features_mag_X_Freq,
+                # **window_features_mag_Y_Freq,
+                # **window_features_mag_Z_Freq,
             }
         else:
             window_features = {
@@ -1362,12 +1380,12 @@ def ExtractIMU_features_window_based(
                 **window_features_gyro_X_Freq,
                 **window_features_gyro_Y_Freq,
                 **window_features_gyro_Z_Freq,
-                **window_features_mag_X_Time,
-                **window_features_mag_Y_Time,
-                **window_features_mag_Z_Time,
-                **window_features_mag_X_Freq,
-                **window_features_mag_Y_Freq,
-                **window_features_mag_Z_Freq,
+            #     **window_features_mag_X_Time,
+            #     **window_features_mag_Y_Time,
+            #     **window_features_mag_Z_Time,
+            #     **window_features_mag_X_Freq,
+            #     **window_features_mag_Y_Freq,
+            #     **window_features_mag_Z_Freq,
             }
 
         all_window_features.append(window_features)

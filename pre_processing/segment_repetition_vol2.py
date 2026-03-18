@@ -213,6 +213,7 @@ def assign_rep_ids(
         "neutral_load_left",
         "neutral_load_right",
     ],
+    save_files = True
 ):
     valid_dfs = {}
     skipped = []
@@ -290,10 +291,10 @@ def assign_rep_ids(
                     df.loc[mask, "rep_id"] = rep_id
 
             print(f"✅ Assigned rep_ids for {activity}")
-
-    for name, df in valid_dfs.items():
-        save_path = output_dir / f"{name}_with_rep_ids.csv"
-        df.to_csv(save_path, index=False)
-        print(f"💾 Saved: {save_path}")
+    if save_files == True:
+        for name, df in valid_dfs.items():
+            save_path = output_dir / f"{name}_with_rep_ids.csv"
+            df.to_csv(save_path, index=False)
+            print(f"💾 Saved: {save_path}")
 
     return sensor_dfs
