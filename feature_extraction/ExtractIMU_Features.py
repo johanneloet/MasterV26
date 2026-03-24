@@ -19,6 +19,7 @@ from feature_extraction.resample_windows import downsample_channel
 from feature_extraction.create_feature_windows import build_boundaries
 from feature_extraction.resample_old_imu_files import resample_imu_dataframe
 from feature_extraction.create_fixed_length_feature_windows import build_containers, generate_fixed_length_windows_centered
+from feature_extraction.label_static_transient import transient_score
 
 
 def ExtractIMU_Features(
@@ -76,13 +77,13 @@ def ExtractIMU_Features(
         # Define the start and end index for the window
         start_idx = i * window_length
         end_idx = start_idx + window_length
-        # print(f"Getting features from window {start_idx} to {end_idx}")
+        # print(f"Getting features from window {start_idx} to {end_idx}"
 
-        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
-        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
-        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
-        # plt.title(f"{imu_data.iloc[start_idx]['label']}")
-        # plt.show()
+        plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
+        plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
+        plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
+        plt.title(f"{imu_data.iloc[start_idx]['label']}")
+        plt.show()
         if norm_IMU == True:
             # Extract acceleration and gyroscope data from the IMU dataset
             if replace_acc_w_HDR and HDR:
@@ -1192,7 +1193,6 @@ def ExtractIMU_features_window_based(
         imu_data = pd.read_csv(imu_data)
 
     imu_data = imu_data.reset_index(drop=True).copy()
-    print(imu_data.head())
 
     #print(f"BEFORE IMU data rep ids are: {imu_data['rep_id'].unique()}")
     if resample_signal:
@@ -1204,10 +1204,8 @@ def ExtractIMU_features_window_based(
         fs = target_fs
     
     #print(f"IMU data rep ids are: {imu_data['rep_id'].unique()}")
-    print('start build containers')
     containers = build_containers(imu_data, use_rep_id=use_rep_id)
 
-    print('generate fixed legth wins')
     windows = generate_fixed_length_windows_centered(
         containers=containers,
         fs=fs,
@@ -1233,17 +1231,14 @@ def ExtractIMU_features_window_based(
     all_window_features = []
     all_window_labels = []
     all_window_meta = []
+    all_window_static_labels = []
 
     for _, row in windows.iterrows():
         start_idx = int(row["start_idx"])
         end_idx = int(row["end_idx"])
         window_label = row["label"]
 
-        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
-        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
-        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
-        # plt.title(f"{imu_data.iloc[start_idx]['label']}_{imu_data.iloc[start_idx]['rep_id']}")
-        # plt.show()
+
         if use_rep_id == True:
             all_window_meta.append(
                 {
@@ -1266,7 +1261,8 @@ def ExtractIMU_features_window_based(
                 }
                 )
         all_window_labels.append(window_label)
-        print('begine getting the windows')
+        #print('begine getting the windows')
+        #all_window_static_labels.append(window_static_label)
 
         window_accel_X = accel_X[start_idx:end_idx]
         window_accel_Y = accel_Y[start_idx:end_idx]
@@ -1280,7 +1276,22 @@ def ExtractIMU_features_window_based(
         window_mag_Y = mag_Y[start_idx:end_idx]
         window_mag_Z = mag_Z[start_idx:end_idx]
 
-        print('getting time domain fts')
+        window_transient_score = transient_score(window_accel_X, window_accel_Y, window_accel_Z, window_gyro_X, window_gyro_Y, window_gyro_Z)
+        print(window_transient_score, "<-transient score")
+        static_marker = "static"
+        if window_transient_score > 1:
+            static_marker = "transient"
+
+        window_static_label = f"{window_label}_{static_marker}"
+        all_window_static_labels.append(window_static_label)
+
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
+        # plt.title(f"{imu_data.iloc[start_idx]['label']}_{imu_data.iloc[start_idx]['rep_id']}_{static_marker}")
+        # plt.show()
+
+        #print('getting time domain fts')
         window_features_accel_X_Time = get_Time_Domain_features_of_signal(
             window_accel_X, f"accel_X_{sensor_name}"
         )
@@ -1341,6 +1352,8 @@ def ExtractIMU_features_window_based(
         #     window_mag_Z, f"mag_Z_{sensor_name}", fs
         # )
 
+        # compute transient score
+
         # Merge features
         if time_only:
             window_features = {
@@ -1393,6 +1406,4 @@ def ExtractIMU_features_window_based(
     feature_df = pd.DataFrame(all_window_features)
     meta_df = pd.DataFrame(all_window_meta)
 
-    feature_df = pd.concat([meta_df, feature_df], axis=1)
-
-    return feature_df, all_window_labels
+    return feature_df, all_window_labels, all_window_static_labels

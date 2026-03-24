@@ -30,7 +30,7 @@ def build_boundaries(
         lab = labels[Ls]  # same label across [Ls, Le)
 
         if any(lab.startswith(fl) or fl in lab for fl in fixed_labels):
-            # Fixed-length chunking across full label span (ignore rep_id entirely)
+            # Fixed-length chunking across full label span (ignore rep_id)
             span_len = Le - Ls
             if span_len < fixed_len and drop_incomplete:
                 continue
@@ -40,7 +40,7 @@ def build_boundaries(
                 e = s + fixed_len
                 rows.append(
                     (s, e, lab, rep_ids[s])
-                )  # rep_id here is just the one at start; label drives this
+                )  # rep_id here is just the one at start, label drives this
             if not drop_incomplete and span_len % fixed_len:
                 s = Ls + n_full * fixed_len
                 e = Le
@@ -57,7 +57,7 @@ def build_boundaries(
     return pd.DataFrame(rows, columns=["start_idx", "end_idx", "label", "rep_id"])
 
 
-def drop_last_for_label(df, labels, label_value):
+def drop_last_for_label(df, labels, static_labels, label_value):
     """
     Drops exactly one row in df (the last occurrence of label_value)
     and the corresponding label from labels.
@@ -72,12 +72,12 @@ def drop_last_for_label(df, labels, label_value):
 
     drop_idx = idxs[-1]
 
-    # Drop without resetting index yet, so we can safely pop label first
     df = df.drop(df.index[drop_idx])
 
-    # Remove the matching label
+    # Remove the matching label from both labels and static arkers
     labels.pop(drop_idx)
+    if static_labels is not None:
+        static_labels.pop(drop_idx)
 
-    # Now reindex both so they stay 1:1 aligned
     df = df.reset_index(drop=True)
     return df, labels

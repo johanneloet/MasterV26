@@ -179,10 +179,15 @@ def run_dbscan_on_dataset(
         raise ValueError("No feature files found for the requested configuration.")
 
     combined_features = pd.concat(feature_dfs, ignore_index=True)
+    combined_features['original_label'] = combined_features['label']
     combined_features['label'] = combined_features['label'].apply(map_label_hierarchical)
 
     combined_features= drop_label(combined_features, 'lying')
-    combined_features= drop_label(combined_features, 'break')
+    #combined_features= drop_label(combined_features, 'break')
+
+    static_labels = combined_features["static_label"]
+    combined_features['label'] = combined_features['original_label']
+    combined_features.drop(columns=['original_label'])
     metadata_cols = [
         "label",
         "prefix",
@@ -235,41 +240,126 @@ def run_dbscan_on_dataset(
 
     out_df = pd.DataFrame(X_model[:, :2], columns=["PC1", "PC2"])
     out_df["cluster"] = clusters
+    out_df["static_label"] = static_labels
 
     for col in meta.columns:
         out_df[col] = meta[col].values
 
     return out_df, db, pca, scaler
 
-def plot_pca_dbscan_clusters(scores_df, pc_x="PC1", pc_y="PC2", cluster_col="cluster"):
+def plot_pca_dbscan_clusters(
+    scores_df,
+    pc_x="PC1",
+    pc_y="PC2",
+    cluster_col="cluster",
+    static_by=None,
+    static_values=("static",),
+):
     import matplotlib.pyplot as plt
     import numpy as np
+    from matplotlib.lines import Line2D
 
-    unique_clusters = sorted(scores_df[cluster_col].unique())
+    scores_df = scores_df.copy()
+
+    if static_by is not None:
+        scores_df["_static_state"] = scores_df[static_by].isin(static_values)
+        print(scores_df[[static_by, "_static_state"]].drop_duplicates().sort_values(static_by))
+
+    unique_clusters = sorted(scores_df[cluster_col].dropna().unique())
 
     non_noise = [c for c in unique_clusters if c != -1]
-    colors = plt.cm.nipy_spectral(np.linspace(0, 1, max(len(non_noise), 1)))
+    cmap = plt.get_cmap("Set3")
+
+    colors = cmap(np.linspace(0, 1, max(len(non_noise), 1)))
     cluster_to_color = {cl: colors[i] for i, cl in enumerate(non_noise)}
-    cluster_to_color[-1] = (0.5, 0.5, 0.5, 0.6)  # gray for noise
+    cluster_to_color[-1] = (0.75, 0.75, 0.75, 0.6)  # grey noise
 
     plt.figure(figsize=(10, 8))
 
     for cl in unique_clusters:
         sub = scores_df[scores_df[cluster_col] == cl]
 
-        plt.scatter(
-            sub[pc_x],
-            sub[pc_y],
-            color=cluster_to_color[cl],
-            s=30,
-            alpha=0.75,
+        if static_by is not None:
+            sub_static = sub[sub["_static_state"] == True]
+            sub_nonstatic = sub[sub["_static_state"] == False]
+
+            if not sub_static.empty:
+                plt.scatter(
+                    sub_static[pc_x],
+                    sub_static[pc_y],
+                    color=cluster_to_color[cl],
+                    marker="o",
+                    s=30,
+                    alpha=0.75,
+                    label=None,
+                )
+
+            if not sub_nonstatic.empty:
+                plt.scatter(
+                    sub_nonstatic[pc_x],
+                    sub_nonstatic[pc_y],
+                    color=cluster_to_color[cl],
+                    marker="X",
+                    s=30,
+                    alpha=0.75,
+                    label=None,
+                )
+        else:
+            plt.scatter(
+                sub[pc_x],
+                sub[pc_y],
+                color=cluster_to_color[cl],
+                s=30,
+                alpha=0.75,
+                label=None,
+            )
+
+    # cluster legend
+    cluster_handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=cluster_to_color[cl],
+            markersize=8,
             label="noise" if cl == -1 else str(cl),
         )
+        for cl in unique_clusters
+    ]
 
-    plt.title(f"PCA colored by {cluster_col}")
+    plt.gca().add_artist(
+        plt.legend(handles=cluster_handles, bbox_to_anchor=(1.02, 1), loc="upper left", title=cluster_col)
+    )
+
+    # static/non-static legend
+    if static_by is not None:
+        marker_handles = [
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="black",
+                linestyle="None",
+                markersize=8,
+                label="Static",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="X",
+                color="black",
+                linestyle="None",
+                markersize=8,
+                label="Non-static",
+            ),
+        ]
+
+        plt.legend(handles=marker_handles, bbox_to_anchor=(1.02, 0.55), loc="upper left", title=static_by)
+
+    plt.title("PCA colored by HDBSCAN clusters")
     plt.xlabel(pc_x)
     plt.ylabel(pc_y)
-    plt.legend(bbox_to_anchor=(1.02, 1), loc="upper left")
     plt.tight_layout()
     plt.show()
 
@@ -364,6 +454,33 @@ def cluster_label_crosstab(scores_df, cluster_col="cluster", label_col="label"):
     ) * 100
     return ct, ct_pct
 
+import matplotlib.pyplot as plt
+import mplcursors
+
+def interactive_pca_plot(X_pca, clusters, labels):
+
+    fig, ax = plt.subplots(figsize=(8,6))
+
+    sc = ax.scatter(
+        X_pca[:,0],
+        X_pca[:,1],
+        c=clusters,
+        cmap="tab20",
+        s=20
+    )
+
+    cursor = mplcursors.cursor(sc, hover=True)
+
+    @cursor.connect("add")
+    def on_add(sel):
+        i = sel.index
+        sel.annotation.set_text(
+            f"idx: {i}\ncluster: {clusters[i]}\nlabel: {labels[i]}"
+        )
+
+    plt.title("Interactive PCA scatter")
+    plt.show()
+
 
 
 if __name__ == "__main__":
@@ -392,16 +509,20 @@ if __name__ == "__main__":
         left_fsr=True,
         right_fsr=True,
         expanded_fsr=True,
-        prefixes=["aksowork", "aksoprotocol", "prelim"],
+        prefixes=["aksoprotocol", "prelim", "aksowork"],
         feature_mode="Window",
         min_samples=5,
-        use_pca=True,
-        n_pca=0.85,
-        min_cluster_size=45
+        n_pca=10,
+        min_cluster_size=33
     )
 
 
-    plot_pca_dbscan_clusters(dbscan_df)
+    interactive_pca_plot(
+    dbscan_df[["PC1", "PC2"]].to_numpy(),
+    dbscan_df["cluster"].to_numpy(),
+    dbscan_df["label"].to_numpy(),
+)
+    plot_pca_dbscan_clusters(dbscan_df, static_by="static_label")
 
     counts = summarize_labels_in_clusters(dbscan_df)
     ct_counts, ct_pct = cluster_label_crosstab(dbscan_df)

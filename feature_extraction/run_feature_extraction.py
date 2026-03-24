@@ -167,10 +167,8 @@ def run_feature_extraction(
 
 
     elif mode == 'Window':
-
-        print('begin feature extraction right')
         if right_arm_df is not None:
-            feat_muse_rarm, window_labels_rarm = ExtractIMU_features_window_based(
+            feat_muse_rarm, window_labels_rarm, window_static_labels_rarm = ExtractIMU_features_window_based(
                 imu_data=right_arm_df,
                 sensor_name="R_arm",
                 fs=IMU_sampling_rates,
@@ -185,7 +183,7 @@ def run_feature_extraction(
             # Left Arm
        
         if left_arm_df is not None:
-            feat_muse_larm, window_labels_larm = ExtractIMU_features_window_based(
+            feat_muse_larm, window_labels_larm, window_static_labels_larm = ExtractIMU_features_window_based(
                 imu_data=left_arm_df,
                 sensor_name="L_arm",
                 fs=IMU_sampling_rates,
@@ -199,7 +197,7 @@ def run_feature_extraction(
 
         # Lower Back
         if lower_back_df is not None:
-            feat_muse_lback, window_labels_lback = ExtractIMU_features_window_based(
+            feat_muse_lback, window_labels_lback, window_static_labels_lback = ExtractIMU_features_window_based(
                 imu_data=lower_back_df,
                 sensor_name="Lower_back",
                 fs=IMU_sampling_rates,
@@ -213,7 +211,7 @@ def run_feature_extraction(
 
         # Upper Back
         if upper_back_df is not None:
-            feat_muse_uback, window_labels_uback = ExtractIMU_features_window_based(
+            feat_muse_uback, window_labels_uback, window_static_labels_uback = ExtractIMU_features_window_based(
                 imu_data=upper_back_df,
                 sensor_name="Upper_back",
                 fs=IMU_sampling_rates,
@@ -304,8 +302,17 @@ def run_feature_extraction(
         "right_fsr": window_labels_fsr_right,
     }
 
+    static_label_dict = {
+        "right_arm": window_static_labels_rarm,
+        "left_arm": window_static_labels_larm,
+        "lower_back": window_static_labels_lback,
+        "upper_back": window_static_labels_uback,
+         "left_fsr": None,
+        "right_fsr": None
+    }
     # Filter out missing sensors
     available_sensors = [s for s in features_dict if features_dict[s] is not None]
+    
 
     # Align labels across all available sensors
     all_labels = sorted(set(l for s in available_sensors for l in label_dict[s]))
@@ -316,11 +323,48 @@ def run_feature_extraction(
         for sensor in available_sensors:
             current_count = Counter(label_dict[sensor]).get(label, 0)
             while current_count > min_count:
-                # Drop last row for this label (you already have drop_last_for_label)
+                # print("CURRENT COUNT HIGH!!!")
+                # print("sensor is ", sensor)
+                # print("label is", label)
+
+                # time.sleep(5)
                 features_dict[sensor], label_dict[sensor] = drop_last_for_label(
-                    features_dict[sensor], label_dict[sensor], label
+                    features_dict[sensor], label_dict[sensor], static_label_dict[sensor],label
                 )
                 current_count -= 1
+    # find static vs non static consensus
+    for s in available_sensors:
+        if s == "left_fsr" or s == "right_fsr": # ignore soles for this
+            continue
+        print(s, len(static_label_dict[s]))
+        print(s, len(label_dict[s]))
+
+        n_windows = len(static_label_dict[available_sensors[0]])
+
+        consensus_static_labels = []
+
+        for i in range(n_windows):
+            votes_transient = 0 # reset per window
+
+            for s in available_sensors:
+                if s == "left_fsr" or s == "right_fsr": # ignore soles for this
+                    continue
+                static_label = static_label_dict[s][i]
+
+                # adjust these rules to your actual label format
+                if "transient" in static_label:
+                    print(f"sensor {s} detected transient")
+                    votes_transient += 1
+
+            # low bar for transient: if any sensor says transient
+            if votes_transient >= 1:
+            
+                consensus_static_labels.append("transient")
+            else:
+                print(f"static rep")
+                time.sleep(1)
+                consensus_static_labels.append("static")
+        
 
     # Check all lengths are equal
     lengths = [len(features_dict[s]) for s in available_sensors]
@@ -332,7 +376,8 @@ def run_feature_extraction(
 
     # Combine features
     all_features = pd.concat([features_dict[s] for s in available_sensors], axis=1)
-    all_features["label"] = label_dict[available_sensors[0]]  # first sensor's labels
+    all_features["label"] = label_dict[available_sensors[0]]  # first sensor's labels (these should be consistent!)
+    all_features["static_label"] = consensus_static_labels
 
     sensor_combo_scenario = "_".join(available_sensors)
 
@@ -375,9 +420,6 @@ def run_feature_extraction_for_multiple_tests(
                 paths.get("right_arm") or paths.get("arm")
                 if "right_arm" in scenario else None
             )
-            print('right arm path', right_arm_path)
-            if right_arm_path:
-                print("size:", Path(right_arm_path).stat().st_size)
 
             left_arm_path = paths.get("left_arm") if "left_arm" in scenario else None
 
@@ -407,7 +449,7 @@ def run_feature_extraction_for_multiple_tests(
             df_lfsr = pd.read_csv(left_fsr_path) if left_fsr_path else None
             df_rfsr = pd.read_csv(right_fsr_path) if right_fsr_path else None
 
-            print(df_rarm.head())
+           # print(df_rarm.head())
 
             feat_dir = get_one_foler_path(test_id)
             print(f"Directory to save features: {feat_dir}")
@@ -446,7 +488,6 @@ def run_feature_extraction_for_multiple_tests(
             print(f"Failed for {test_id}: {e}")
             if stop_if_one_fails:
                 return False
-
     end = time.time()
     print(f"\n🕒 Done! Total time used: {end - start:.2f} seconds")
 
@@ -483,6 +524,17 @@ if __name__ == "__main__":
     # scenario with only 4 sensors (the old setup)
     scenario_4 = ["right_arm", "lower_back", "left_fsr", "right_fsr"]
 
+    scenario_no_soles = [
+        "right_arm",
+        "left_arm",
+        "lower_back",
+        "upper_back",]
+    
+    scenario_arms_only = [
+        "right_arm",
+        "left_arm",
+    ]
+
 
     # Define settings
     mode = "Window"              # "window" or "repetition"
@@ -490,8 +542,8 @@ if __name__ == "__main__":
     imu_sampling_rate = 100 # original sampling rate of the files in this run
     resample_signal = False  # set True if these files need IMU resampling
     target_fs = 100              # target IMU fs after resampling
-    window_sec = 3.5
-    use_rep_id = True         # if False, use consecutive label runs instead
+    window_sec = 2.5
+    use_rep_id = True  # if False, use consecutive label runs instead
 
     # Run with selected settings!
     # NB IMU sampling rates must be consistent across all participants. Run different sampling rates in separate runs!

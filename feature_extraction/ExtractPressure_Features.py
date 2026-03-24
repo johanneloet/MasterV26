@@ -469,6 +469,4 @@ def ExtractPressure_Features_window_based(
     feature_df = pd.DataFrame(all_window_features)
     meta_df = pd.DataFrame(all_meta)
 
-    feature_df = pd.concat([meta_df, feature_df], axis=1)
-
     return feature_df, all_window_labels

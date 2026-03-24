@@ -208,6 +208,7 @@ def remove_idle(correct_label_filepath, correct_label_df=None):
         raise ValueError("The DataFrame must contain a 'label' column.")
 
     # Filter out idle samples
+    correct_label_df['label'] = correct_label_df['label'].fillna('idle')
     labeled_df = correct_label_df[correct_label_df["label"] != "idle"].copy()
 
     output_path = f"{correct_label_filepath.rstrip('.txt').rstrip('.csv')}_no_idle.csv"

@@ -201,13 +201,13 @@ from pathlib import Path
 #     plt.close()
 
 #     return all_accuracies
-
+from utils import map_label_hierarchical, map_label_coarse, map_label_taxonomy_v1, map_label_taxonomy_posture_focus, map_label_coarse_posture_focus
 
 def run_loocv_with_pca(
     clf_name: str = "SVC",
     label_mapping: dict | None = None,
     class_version: int = 1,
-    prefixes: list[str] = ["prelim"],
+    prefixes: list[str] = ["prelim", "aksowork"],
     right_arm: bool = True,
     left_arm: bool = True,
     lower_back: bool = True,
@@ -215,6 +215,8 @@ def run_loocv_with_pca(
     left_fsr: bool = True,
     right_fsr: bool = True,
     expanded_fsr: bool = False,
+    taxonomy_fn=None,
+    label_override_fn=None,
 ):
     test_folder_dict = get_test_folder_paths()
 
@@ -244,7 +246,7 @@ def run_loocv_with_pca(
     for test_id, folder_path in test_folder_dict.items():
         if test_id.split("_")[0] in prefixes:
             filename = (
-                f"Features_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+                f"Features_Window_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
             )
             feature_files[test_id] = Path(folder_path) / filename
 
@@ -272,33 +274,98 @@ def run_loocv_with_pca(
 
         train_df = pd.concat(train_dfs, ignore_index=True)
 
-        X_train = train_df.drop(columns=["label"])
-        Y_train = train_df["label"]
+        # Drop unnamed columns columns 
+        cols_to_drop_train = [
+            c for c in train_df.columns
+            if "Unnamed" in c
+        ]
+        cols_to_drop_test = [
+            c for c in test_df.columns
 
-        X_test = test_df.drop(columns=["label"])
-        Y_test = test_df["label"]
+            if "Unnamed" in c
+        ]
 
-        if label_mapping is not None:
-            Y_train = Y_train.map(label_mapping)
-            Y_test = Y_test.map(label_mapping)
-            labels = Y_train.unique()
-        else:
-            labels = Y_train.unique()
+        train_df = train_df.drop(columns=cols_to_drop_train)
+        test_df = test_df.drop(columns=cols_to_drop_test)
 
+        train_df["label_used"] = train_df["label"]
+        test_df["label_used"] = test_df["label"]
+
+        if taxonomy_fn is not None:
+            train_df["label_used"] = train_df["label"].apply(taxonomy_fn)
+            test_df["label_used"] = test_df["label"].apply(taxonomy_fn)
+
+        if label_override_fn is not None:
+            train_df["label_used"] = train_df.apply(
+                lambda row: label_override_fn(row["label_used"], row["static_label"]),
+                axis=1
+            )
+            test_df["label_used"] = test_df.apply(
+                lambda row: label_override_fn(row["label_used"], row["static_label"]),
+                axis=1
+            )
+
+        train_df = train_df[train_df["label_used"].notna()].copy()
+        test_df = test_df[test_df["label_used"].notna()].copy()
+
+        # drop unusual labels
+        train_df = train_df[train_df["label_used"] != "drop"].copy()
+        test_df = test_df[test_df["label_used"] != "drop"].copy()
+
+        # # drop break
+        # train_df = train_df[train_df["label_used"] != "break"].copy()
+        # test_df = test_df[test_df["label_used"] != "break"].copy()
+
+        # # drop lying_arms_up
+        # train_df = train_df[train_df["label_used"] != "lying_arms_up"].copy()
+        # test_df = test_df[test_df["label_used"] != "lying_arms_up"].copy()
+
+        
+        Y_train = train_df["label_used"]
+        X_train = train_df.drop(
+            columns=["label", "label_used", "static_label"],
+            errors="ignore"
+        )
+
+        # Use only test labels seen in training
+        test_df = test_df[test_df["label_used"].isin(Y_train.unique())].copy()
+
+        Y_test = test_df["label_used"]
+        X_test = test_df.drop(
+            columns=["label", "label_used", "static_label"],
+            errors="ignore"
+        )
+
+        
+
+         # -------------------------
+        # Sanity checks
+        # -------------------------
+        assert len(X_train) == len(Y_train), f"Train mismatch: {len(X_train)} vs {len(Y_train)}"
+        assert len(X_test) == len(Y_test), f"Test mismatch: {len(X_test)} vs {len(Y_test)}"
+    
+        # OLD LABEL MAPPING CODE
+        # if label_mapping is not None:
+        #     Y_train = Y_train.map(label_mapping)
+        #     Y_test = Y_test.map(label_mapping)
+        #     labels = Y_train.unique()
+        # else:
+        #     labels = Y_train.unique()
+       
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
 
         pca = PCA(n_components=0.95)
         X_train_pca = pca.fit_transform(X_train_scaled)
-        # X_train_pca = np.delete(X_train_pca, 3, axis=1) # drop PC 4, as this encodes dataset variance
         X_test_pca = pca.transform(X_test_scaled)
-        # X_test_pca = np.delete(X_test_pca, 3, axis=1) # drop PC 4, as this encodes dataset variance
 
         print(f"PCA components: {pca.n_components_}")
         print(f"Explained variance: {pca.explained_variance_ratio_.sum():.3f}")
 
         CV_suffix = f"{leave_out}_{sensor_combo_scenario}_expanded{expanded_fsr}_class{class_version}"
+
+        labels = sorted(Y_train.unique())
 
         if clf_name == "SVC":
             test_results, train_results = run_SVC(
@@ -371,9 +438,11 @@ def run_loocv_with_pca(
 
 if __name__ == "__main__":
     run_loocv_with_pca(
-        prefixes=["akso"],
+        prefixes=["aksowork", "prelim"],
         left_arm=True,
         upper_back=True,
-        clf_name="SVC",
+        clf_name="NN",
         expanded_fsr=True,
+        taxonomy_fn=map_label_taxonomy_posture_focus,
+        label_override_fn=map_label_coarse_posture_focus
     )

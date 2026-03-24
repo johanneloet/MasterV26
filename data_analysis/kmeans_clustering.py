@@ -241,9 +241,9 @@ def run_kmeans_on_dataset(
 def plot_pca_clusters(scores_df, pc_x="PC1", pc_y="PC2", cluster_col="cluster"):
     import matplotlib.pyplot as plt
     import numpy as np
-
+    cmap = plt.get_cmap("Set3")
     unique_clusters = sorted(scores_df[cluster_col].unique())
-    colors = plt.cm.nipy_spectral(np.linspace(0, 1, len(unique_clusters)))
+    colors = cmap(np.linspace(0.35, 0.75, 5))
     cluster_to_color = {cl: colors[i] for i, cl in enumerate(unique_clusters)}
 
     plt.figure(figsize=(10, 8))
@@ -442,7 +442,7 @@ if __name__ == '__main__':
     expanded_fsr=True,
     prefixes=["aksowork", "prelim", "aksoprotocol"],
     feature_mode="Window",
-    n_clusters=3,
+    n_clusters=4,
     use_pca=True,
     n_pca=0.95,
     random_state=42,
