@@ -66,16 +66,14 @@ if __name__ == '__main__':
     # or non rotocol, rep_id or no rep_id. no mixing and matching allowed. 
     base_dir = Path(r"C:\Users\johalot\msc_data")
     participants = [
-        'akso_1',
-        'akso_2', 
-        'akso_3'
+        'akso_5'
     ]
     protocol = False # only relevant for the akso files. Set to true to find the prtocol files, false for work files.
     rep_id = False # whether or not to assign a rep_id column. if set to true the code assumes you have rep id start stop .csv files in the participant directory.
-    IMU_original_fs = 800
+    IMU_original_fs = 100
     IMU_target_fs = 100
-    resample_IMU = True # whether or not to resample IMU streams. Apply if original fs is 800! 
-    rotate_back = True
+    resample_IMU = False # whether or not to resample IMU streams. Apply if original fs is 800! 
+    rotate_back = False
 
 
     # --------------------------------------- Begin run --------------------------------------------------------------

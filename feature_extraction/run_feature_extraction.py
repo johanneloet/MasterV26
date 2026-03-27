@@ -178,7 +178,7 @@ def run_feature_extraction(
                 target_fs=target_resampling_rate,
             )
         else:
-            feat_muse_rarm, window_labels_rarm = None, None
+            feat_muse_rarm, window_labels_rarm, window_labels_rarm = None, None, None
 
             # Left Arm
        
@@ -193,7 +193,7 @@ def run_feature_extraction(
                 target_fs=target_resampling_rate,
             )
         else:
-            feat_muse_larm, window_labels_larm = None, None
+            feat_muse_larm, window_labels_larm, window_static_labels_larm = None, None, None
 
         # Lower Back
         if lower_back_df is not None:
@@ -207,7 +207,7 @@ def run_feature_extraction(
                 target_fs=target_resampling_rate,
             )
         else:
-            feat_muse_lback, window_labels_lback = None, None
+            feat_muse_lback, window_labels_lback, window_static_labels_lback = None, None, None
 
         # Upper Back
         if upper_back_df is not None:
@@ -221,7 +221,7 @@ def run_feature_extraction(
                 target_fs=target_resampling_rate,
             )
         else:
-            feat_muse_uback, window_labels_uback = None, None
+            feat_muse_uback, window_labels_uback,  window_static_labels_uback = None, None, None
 
         # Left FSR
         if left_fsr_df is not None:
@@ -508,7 +508,8 @@ if __name__ == "__main__":
         # 'aksowork_1',
         # 'aksowork_2',
         # 'aksowork_3',
-        # 'aksowork_4'
+        # 'aksowork_4',
+        # 'aksowork_5'
     ]
 
     #### Define scenarios to be used in feature extraction ####
@@ -548,7 +549,7 @@ if __name__ == "__main__":
     # Run with selected settings!
     # NB IMU sampling rates must be consistent across all participants. Run different sampling rates in separate runs!
     run_feature_extraction_for_multiple_tests(
-        scenario=scenario_6,
+        scenario=scenario_4,
         expanded_fsr=expanded_fsr,
         test_ids=run,
         stop_if_one_fails=True,

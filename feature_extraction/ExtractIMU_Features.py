@@ -79,11 +79,11 @@ def ExtractIMU_Features(
         end_idx = start_idx + window_length
         # print(f"Getting features from window {start_idx} to {end_idx}"
 
-        plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
-        plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
-        plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
-        plt.title(f"{imu_data.iloc[start_idx]['label']}")
-        plt.show()
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
+        # plt.title(f"{imu_data.iloc[start_idx]['label']}")
+        # plt.show()
         if norm_IMU == True:
             # Extract acceleration and gyroscope data from the IMU dataset
             if replace_acc_w_HDR and HDR:
@@ -1288,7 +1288,8 @@ def ExtractIMU_features_window_based(
         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
-        # plt.title(f"{imu_data.iloc[start_idx]['label']}_{imu_data.iloc[start_idx]['rep_id']}_{static_marker}")
+        # plt.title(f"{imu_data.iloc[start_idx]['label']}_{static_marker}")
+        # #plt.title(f"{imu_data.iloc[start_idx]['label']}_{imu_data.iloc[start_idx]['rep_id']}_{static_marker}")
         # plt.show()
 
         #print('getting time domain fts')

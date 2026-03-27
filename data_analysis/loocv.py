@@ -207,11 +207,11 @@ def run_loocv_with_pca(
     clf_name: str = "SVC",
     label_mapping: dict | None = None,
     class_version: int = 1,
-    prefixes: list[str] = ["prelim", "aksowork"],
+    prefixes: list[str] = ["prelim", "aksowork", "aksoprotocol"],
     right_arm: bool = True,
-    left_arm: bool = True,
+    left_arm: bool = False,
     lower_back: bool = True,
-    upper_back: bool = True,
+    upper_back: bool = False,
     left_fsr: bool = True,
     right_fsr: bool = True,
     expanded_fsr: bool = False,
@@ -262,13 +262,21 @@ def run_loocv_with_pca(
     start = time.time()
 
     for leave_out in test_ids:
+        if "prelim" in leave_out or "aksoprotocol" in leave_out:
+            continue # dont test on protocol files.
         print(f"\nTesting on {leave_out}...")
-
+        leave_out_tests = [leave_out]
+        if leave_out.split('_')[0] == 'aksoprotocol':
+            leave_out_tests.append(f'aksowork_{leave_out.split('_')[1]}')
+            print("Leaving out", leave_out_tests)
+        elif leave_out.split('_')[0] == 'aksowork':
+            leave_out_tests.append(f'aksoprotocol_{leave_out.split('_')[1]}')
+            print("Leaving out", leave_out_tests)
         # Split train/test
         train_dfs = [
             pd.read_csv(path)
             for test_id, path in feature_files.items()
-            if test_id != leave_out
+            if test_id not in leave_out_tests
         ]
         test_df = pd.read_csv(feature_files[leave_out])
 
@@ -438,7 +446,7 @@ def run_loocv_with_pca(
 
 if __name__ == "__main__":
     run_loocv_with_pca(
-        prefixes=["aksowork", "prelim"],
+        prefixes=["aksowork", "prelim", "aksoprotocol"],
         left_arm=True,
         upper_back=True,
         clf_name="NN",
