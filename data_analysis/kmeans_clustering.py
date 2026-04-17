@@ -132,6 +132,7 @@ def run_kmeans_on_dataset(
     expanded_fsr=False,
     prefixes=["prelim"],
     feature_mode="Window",
+    feature_window_length=3.5,
     n_clusters=8,
     use_pca=True,
     n_pca=0.95,
@@ -161,8 +162,12 @@ def run_kmeans_on_dataset(
     include_csvs = []
     for test_id, folder_path in test_folder_dict.items():
         if test_id.split("_")[0] in prefixes:
+            if test_id.split("_")[0] == 'aksowork' and feature_mode == 'Repetition':
+                # since a rep mode does nto exist for the work files, use window with 3.5 sec lenght instead.
+                feature_mode = 'Window'
+                feature_window_length = 3.5
             feature_filename = (
-                f"Features_{feature_mode}_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+            f"Features_{feature_mode}_{test_id}_expanded{expanded_fsr}_SEG{feature_mode}{feature_window_length}_{sensor_combo_scenario}.csv"
             )
             include_csvs.append(Path(folder_path) / feature_filename)
 
@@ -186,7 +191,9 @@ def run_kmeans_on_dataset(
     combined_features['label'] = combined_features['label'].apply(map_label_hierarchical)
 
     combined_features = drop_label(combined_features, "lying")
-    combined_features = drop_label(combined_features, "break")
+    #combined_features = drop_label(combined_features, "break")
+
+    static_labels = combined_features["static_label"]
 
     metadata_cols = [
         "label",
@@ -230,6 +237,7 @@ def run_kmeans_on_dataset(
 
     out_df = pd.DataFrame(X_model[:, :2], columns=["PC1", "PC2"])
     out_df["cluster"] = clusters
+    out_df["static_label"] = static_labels
 
     for col in meta.columns:
         out_df[col] = meta[col].values

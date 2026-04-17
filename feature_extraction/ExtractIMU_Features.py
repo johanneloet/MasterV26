@@ -604,6 +604,7 @@ def ExtractIMU_features_repetitions_based(
     # Define a list to store features for each window
     all_window_features = []
     all_window_labels = []
+    all_window_static_labels = []
 
     # Calculate the number of windows
     # rep_ids = imu_data["rep_id"].fillna("none").to_numpy()
@@ -779,6 +780,7 @@ def ExtractIMU_features_repetitions_based(
                 window_hdr_Y = Hdr_Y[start_idx:end_idx]
                 window_hdr_Z = Hdr_Z[start_idx:end_idx]
 
+
                 window_features_gyro_X_Time = get_Time_Domain_features_of_signal(
                     window_gyro_X, f"gyro_X_{sensor_name}"
                 )
@@ -899,6 +901,14 @@ def ExtractIMU_features_repetitions_based(
                 window_mag_Y = mag_Y[start_idx:end_idx]
                 window_mag_Z = mag_Z[start_idx:end_idx]
 
+                window_transient_score = transient_score(window_accel_X, window_accel_Y, window_accel_Z, window_gyro_X, window_gyro_Y, window_gyro_Z)
+                print(window_transient_score, "<-transient score")
+                static_marker = "static"
+                if window_transient_score > 1:
+                    static_marker = "transient"
+
+                window_static_label = f"{window_label}_{static_marker}"
+
                 if HDR:
                     window_hdr_X = Hdr_X[start_idx:end_idx]
                     window_hdr_Y = Hdr_Y[start_idx:end_idx]
@@ -915,6 +925,7 @@ def ExtractIMU_features_repetitions_based(
                     continue
                 else:
                     all_window_labels.append(window_label)
+                    all_window_static_labels.append(window_static_label)
                     # plt.plot(window_accel_X)
 
                     window_accel_X = downsample_channel(
@@ -1155,7 +1166,7 @@ def ExtractIMU_features_repetitions_based(
 
     feature_df = pd.DataFrame(all_window_features)
 
-    return feature_df, all_window_labels
+    return feature_df, all_window_labels, all_window_static_labels
 
 
 ###### NEW METHODS BELOW THIS!!!! ##########################################################################################################

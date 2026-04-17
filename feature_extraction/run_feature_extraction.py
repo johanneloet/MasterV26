@@ -77,47 +77,47 @@ def run_feature_extraction(
     # SEPARATE BY MODES
     if mode == 'Repetition':
         if right_arm_df is not None:
-            feat_muse_rarm, window_labels_rarm = ExtractIMU_features_repetitions_based(
+            feat_muse_rarm, window_labels_rarm, window_static_labels_rarm = ExtractIMU_features_repetitions_based(
                 right_arm_df,
                 "R_Arm",
                 fs=IMU_sampling_rates,
                 target_num_samples=target_IMU_samples,
             )
         else:
-            feat_muse_rarm, window_labels_rarm = None, None
+            feat_muse_rarm, window_labels_rarm, window_static_labels_rarm = None, None, None
 
             # Left Arm
         if left_arm_df is not None:
-            feat_muse_larm, window_labels_larm = ExtractIMU_features_repetitions_based(
+            feat_muse_larm, window_labels_larm, window_static_labels_larm = ExtractIMU_features_repetitions_based(
                 left_arm_df,
                 "L_Arm",
                 fs=IMU_sampling_rates,
                 target_num_samples=target_IMU_samples,
             )
         else:
-            feat_muse_larm, window_labels_larm = None, None
+            feat_muse_larm, window_labels_larm, window_static_labels_larm = None, None, None
 
         # Lower Back
         if lower_back_df is not None:
-            feat_muse_lback, window_labels_lback = ExtractIMU_features_repetitions_based(
+            feat_muse_lback, window_labels_lback, window_static_labels_lback = ExtractIMU_features_repetitions_based(
                 lower_back_df,
                 "Lower_Back",
                 fs=IMU_sampling_rates,
                 target_num_samples=target_IMU_samples,
             )
         else:
-            feat_muse_lback, window_labels_lback = None, None
+            feat_muse_lback, window_labels_lback, window_static_labels_lback = None, None, None
 
         # Upper Back
         if upper_back_df is not None:
-            feat_muse_uback, window_labels_uback = ExtractIMU_features_repetitions_based(
+            feat_muse_uback, window_labels_uback, window_static_labels_uback = ExtractIMU_features_repetitions_based(
                 upper_back_df,
                 "Upper_Back",
                 fs=IMU_sampling_rates,
                 target_num_samples=target_IMU_samples,
             )
         else:
-            feat_muse_uback, window_labels_uback = None, None
+            feat_muse_uback, window_labels_uback, window_static_labels_uback = None, None, None
 
         # Left FSR
         if left_fsr_df is not None:
@@ -170,7 +170,7 @@ def run_feature_extraction(
         if right_arm_df is not None:
             feat_muse_rarm, window_labels_rarm, window_static_labels_rarm = ExtractIMU_features_window_based(
                 imu_data=right_arm_df,
-                sensor_name="R_arm",
+                sensor_name="R_Arm",
                 fs=IMU_sampling_rates,
                 window_sec=window_sec,
                 use_rep_id=use_rep_id,
@@ -185,7 +185,7 @@ def run_feature_extraction(
         if left_arm_df is not None:
             feat_muse_larm, window_labels_larm, window_static_labels_larm = ExtractIMU_features_window_based(
                 imu_data=left_arm_df,
-                sensor_name="L_arm",
+                sensor_name="L_Arm",
                 fs=IMU_sampling_rates,
                 window_sec=window_sec,
                 use_rep_id=use_rep_id,
@@ -342,7 +342,6 @@ def run_feature_extraction(
         n_windows = len(static_label_dict[available_sensors[0]])
 
         consensus_static_labels = []
-
         for i in range(n_windows):
             votes_transient = 0 # reset per window
 
@@ -351,18 +350,16 @@ def run_feature_extraction(
                     continue
                 static_label = static_label_dict[s][i]
 
-                # adjust these rules to your actual label format
                 if "transient" in static_label:
                     print(f"sensor {s} detected transient")
                     votes_transient += 1
 
             # low bar for transient: if any sensor says transient
             if votes_transient >= 1:
-            
                 consensus_static_labels.append("transient")
             else:
                 print(f"static rep")
-                time.sleep(1)
+                #time.sleep(1)
                 consensus_static_labels.append("static")
         
 
@@ -373,16 +370,19 @@ def run_feature_extraction(
         for sensor in available_sensors:
             print(f"  {sensor:12}: {len(features_dict[sensor])}")
         return None
-
+   
     # Combine features
     all_features = pd.concat([features_dict[s] for s in available_sensors], axis=1)
     all_features["label"] = label_dict[available_sensors[0]]  # first sensor's labels (these should be consistent!)
+    print("len av sensors:", len(available_sensors[0]))
+    print("len static", len(consensus_static_labels))
+    print("applying static labels")
     all_features["static_label"] = consensus_static_labels
-
+    print("succeeded")
     sensor_combo_scenario = "_".join(available_sensors)
 
     output_filename = (
-        f"Features_{mode}_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+        f"Features_{mode}_{test_id}_expanded{expanded_fsr}_SEG{mode}{window_sec}_{sensor_combo_scenario}.csv"
     )
 
     all_features.to_csv(Path(output_dir) / output_filename)
@@ -496,20 +496,20 @@ def run_feature_extraction_for_multiple_tests(
 if __name__ == "__main__":
     # Optionally define which test ids to run feature extraction for
     run = [
-        'prelim_1',
-        'prelim_2',
-        'prelim_3',
-        'prelim_4',
-        'prelim_5',
-        'aksoprotocol_1',
-        'aksoprotocol_2',
-        'aksoprotocol_3',
-        'aksoprotocol_4',
-        # 'aksowork_1',
-        # 'aksowork_2',
-        # 'aksowork_3',
-        # 'aksowork_4',
-        # 'aksowork_5'
+        # 'prelim_1',
+        # 'prelim_2',
+        # 'prelim_3',
+        # 'prelim_4',
+        # 'prelim_5',
+        # 'aksoprotocol_1',
+        # 'aksoprotocol_2',
+        # 'aksoprotocol_3',
+        # 'aksoprotocol_4',
+        'aksowork_1',
+        'aksowork_2',
+        'aksowork_3',
+        'aksowork_4',
+        'aksowork_5'
     ]
 
     #### Define scenarios to be used in feature extraction ####
@@ -544,12 +544,12 @@ if __name__ == "__main__":
     resample_signal = False  # set True if these files need IMU resampling
     target_fs = 100              # target IMU fs after resampling
     window_sec = 2.5
-    use_rep_id = True  # if False, use consecutive label runs instead
+    use_rep_id = False # if False, use consecutive label runs instead
 
     # Run with selected settings!
     # NB IMU sampling rates must be consistent across all participants. Run different sampling rates in separate runs!
     run_feature_extraction_for_multiple_tests(
-        scenario=scenario_4,
+        scenario=scenario_6,
         expanded_fsr=expanded_fsr,
         test_ids=run,
         stop_if_one_fails=True,

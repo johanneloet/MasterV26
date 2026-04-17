@@ -1,3 +1,10 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.lines import Line2D
+import pandas as pd
+from matplotlib.colors import LinearSegmentedColormap
+import os
+
 def save_cluster_label_heatmap(
     df,
     filename,
@@ -14,22 +21,14 @@ def save_cluster_label_heatmap(
     annotate_count_threshold=10,
     vmax=60,
 ):
-    import pandas as pd
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import LinearSegmentedColormap
-
     plot_df = df.copy()
 
-    # optional label mapping
     if map_label_fn is not None:
         plot_df[label_col] = plot_df[label_col].apply(map_label_fn)
 
-    # optional noise removal (useful for DBSCAN/HDBSCAN)
     if drop_noise:
         plot_df = plot_df[plot_df[cluster_col] != noise_label].copy()
 
-    # optional rare-label collapsing
     if min_total_label_count > 0:
         total_counts = plot_df[label_col].value_counts()
         rare_labels = total_counts[total_counts < min_total_label_count].index
@@ -38,7 +37,6 @@ def save_cluster_label_heatmap(
             "other"
         )
 
-    # build tables
     ct_counts = pd.crosstab(plot_df[cluster_col], plot_df[label_col])
     ct_pct = pd.crosstab(
         plot_df[cluster_col],
@@ -46,19 +44,16 @@ def save_cluster_label_heatmap(
         normalize="index"
     ) * 100
 
-    # optional label sorting
     if sort_labels:
         label_order = ct_pct.max(axis=0).sort_values(ascending=False).index
         ct_counts = ct_counts[label_order]
         ct_pct = ct_pct[label_order]
 
-    # optional cluster sorting by size
     if sort_clusters:
         cluster_order = ct_counts.sum(axis=1).sort_values(ascending=False).index
         ct_counts = ct_counts.loc[cluster_order]
         ct_pct = ct_pct.loc[cluster_order]
 
-    # add total column
     cluster_sizes = ct_counts.sum(axis=1)
     ct_pct_ext = ct_pct.copy()
     ct_counts_ext = ct_counts.copy()
@@ -96,11 +91,9 @@ def save_cluster_label_heatmap(
     ax.set_ylabel("Cluster")
     ax.set_title(title)
 
-    # separator before TOTAL column
     total_col_idx = ct_pct_ext.shape[1] - 1
     ax.axvline(total_col_idx - 0.5, color="black", linewidth=1.5)
 
-    # annotations
     for i in range(ct_pct_ext.shape[0]):
         for j in range(ct_pct_ext.shape[1]):
             if ct_pct_ext.columns[j] == "TOTAL":
@@ -121,9 +114,155 @@ def save_cluster_label_heatmap(
                         ha="center", va="center",
                         fontsize=7
                     )
-
     plt.tight_layout()
     plt.savefig(filename, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     return ct_counts, ct_pct
+
+def plot_pca_clusters(
+    scores_df,
+    save_path,
+    pc_x="PC1",
+    pc_y="PC2",
+    cluster_col="cluster",
+    static_by=None,
+    static_values=("static",),
+    special_labels=(-1,),
+    special_label_name_map=None,
+    cmap_name="tab20",
+    figsize=(10, 8),
+    point_size=30,
+    alpha=0.75,
+    title=None,
+):
+    df = scores_df.copy()
+
+    if cluster_col not in df.columns:
+        raise ValueError(f"'{cluster_col}' not found in DataFrame")
+    if pc_x not in df.columns or pc_y not in df.columns:
+        raise ValueError(f"'{pc_x}' and/or '{pc_y}' not found in DataFrame")
+
+    if static_by is not None:
+        if static_by not in df.columns:
+            raise ValueError(f"'{static_by}' not found in DataFrame")
+        df["_static_state"] = df[static_by].isin(static_values)
+
+    unique_clusters = [c for c in pd.unique(df[cluster_col]) if pd.notna(c)]
+    unique_clusters = sorted(unique_clusters, key=lambda x: str(x))
+
+    special_labels = set(special_labels or [])
+    regular_clusters = [c for c in unique_clusters if c not in special_labels]
+
+    cmap = plt.get_cmap(cmap_name)
+    colors = cmap(np.linspace(0, 1, max(len(regular_clusters), 1)))
+    cluster_to_color = {cl: colors[i] for i, cl in enumerate(regular_clusters)}
+
+    for cl in unique_clusters:
+        if cl in special_labels:
+            cluster_to_color[cl] = (0.75, 0.75, 0.75, 0.6)
+
+    if special_label_name_map is None:
+        special_label_name_map = {}
+
+    plt.figure(figsize=figsize)
+
+    for cl in unique_clusters:
+        sub = df[df[cluster_col] == cl]
+
+        if static_by is not None:
+            sub_static = sub[sub["_static_state"]]
+            sub_nonstatic = sub[~sub["_static_state"]]
+
+            if not sub_static.empty:
+                plt.scatter(
+                    sub_static[pc_x],
+                    sub_static[pc_y],
+                    color=cluster_to_color[cl],
+                    marker="o",
+                    s=point_size,
+                    alpha=alpha,
+                    label=None,
+                )
+
+            if not sub_nonstatic.empty:
+                plt.scatter(
+                    sub_nonstatic[pc_x],
+                    sub_nonstatic[pc_y],
+                    color=cluster_to_color[cl],
+                    marker="X",
+                    s=point_size,
+                    alpha=alpha,
+                    label=None,
+                )
+        else:
+            plt.scatter(
+                sub[pc_x],
+                sub[pc_y],
+                color=cluster_to_color[cl],
+                s=point_size,
+                alpha=alpha,
+                label=None,
+            )
+
+    cluster_handles = []
+    for cl in unique_clusters:
+        label = special_label_name_map.get(cl, str(cl))
+        cluster_handles.append(
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                markerfacecolor=cluster_to_color[cl],
+                markersize=8,
+                label=label,
+            )
+        )
+
+    ax = plt.gca()
+    cluster_legend = ax.legend(
+        handles=cluster_handles,
+        bbox_to_anchor=(1.02, 1),
+        loc="upper left",
+        title=cluster_col,
+    )
+    ax.add_artist(cluster_legend)
+
+    if static_by is not None:
+        marker_handles = [
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="black",
+                linestyle="None",
+                markersize=8,
+                label="Static",
+            ),
+            Line2D(
+                [0],
+                [0],
+                marker="X",
+                color="black",
+                linestyle="None",
+                markersize=8,
+                label="Non-static",
+            ),
+        ]
+        ax.legend(
+            handles=marker_handles,
+            bbox_to_anchor=(1.02, 0.55),
+            loc="upper left",
+            title=static_by,
+        )
+
+    plt.title(title or f"PCA colored by {cluster_col}")
+    plt.xlabel(pc_x)
+    plt.ylabel(pc_y)
+    plt.tight_layout()
+    #plt.show()
+
+    if save_path is not None:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, bbox_inches="tight")

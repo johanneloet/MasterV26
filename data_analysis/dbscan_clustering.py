@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from utils import map_label_hierarchical, drop_label
 from matplotlib.colors import LinearSegmentedColormap
 
-from plotting.cluster_plots import save_cluster_label_heatmap
+from plotting.cluster_plots import save_cluster_label_heatmap, plot_pca_clusters
 
 
 def plot_dbscan_k_distance(
@@ -126,6 +126,7 @@ def run_dbscan_on_dataset(
     expanded_fsr=False,
     prefixes=["prelim"],
     feature_mode="Window",
+    feature_window_sec=3.5,
     eps=2.5,
     min_samples=20,
     use_pca=True,
@@ -156,17 +157,24 @@ def run_dbscan_on_dataset(
     include_csvs = []
     for test_id, folder_path in test_folder_dict.items():
         if test_id.split("_")[0] in prefixes:
+            feature_mode_original = feature_mode
+            if test_id.split("_")[0] == 'aksowork' and feature_mode == 'Repetition':
+                # since a rep mode does nto exist for the work files, use window with 3.5 sec lenght instead.
+                feature_mode = 'Window'
             feature_filename = (
-                f"Features_{feature_mode}_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+                f"Features_{feature_mode}_{test_id}_expanded{expanded_fsr}_SEG{feature_mode}{feature_window_sec}_{sensor_combo_scenario}.csv"
             )
             include_csvs.append(Path(folder_path) / feature_filename)
+            feature_mode = feature_mode_original
 
     feature_dfs = []
     for p in include_csvs:
         df = pd.read_csv(p)
-
+        print("COLUMNS")
+        print(df.columns)
         filename = p.name
-        test_id = filename.split("Features_")[1].split("_expanded")[0]
+        test_id = filename.split(f"Features_")[1].split("_expanded")[0]
+        print(test_id, "<- TEST ID")
 
         parts = test_id.split("_")
         prefix = "_".join(parts[:-1]) if len(parts) > 1 else test_id
@@ -179,6 +187,7 @@ def run_dbscan_on_dataset(
         raise ValueError("No feature files found for the requested configuration.")
 
     combined_features = pd.concat(feature_dfs, ignore_index=True)
+    print(combined_features)
     combined_features['original_label'] = combined_features['label']
     combined_features['label'] = combined_features['label'].apply(map_label_hierarchical)
 
@@ -207,12 +216,15 @@ def run_dbscan_on_dataset(
         errors="ignore",
     )
     X = X.select_dtypes(include="number")
+    #print("X before dropping Nan", X)
 
     mask = ~X.isna().any(axis=1)
     X = X.loc[mask].reset_index(drop=True)
     meta = meta.loc[mask].reset_index(drop=True)
 
     scaler = StandardScaler()
+    #print("X is.....")
+    #print(X)
     X_scaled = scaler.fit_transform(X)
 
     if use_pca:
@@ -247,124 +259,7 @@ def run_dbscan_on_dataset(
 
     return out_df, db, pca, scaler
 
-def plot_pca_dbscan_clusters(
-    scores_df,
-    pc_x="PC1",
-    pc_y="PC2",
-    cluster_col="cluster",
-    static_by=None,
-    static_values=("static",),
-):
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from matplotlib.lines import Line2D
-
-    scores_df = scores_df.copy()
-
-    if static_by is not None:
-        scores_df["_static_state"] = scores_df[static_by].isin(static_values)
-        print(scores_df[[static_by, "_static_state"]].drop_duplicates().sort_values(static_by))
-
-    unique_clusters = sorted(scores_df[cluster_col].dropna().unique())
-
-    non_noise = [c for c in unique_clusters if c != -1]
-    cmap = plt.get_cmap("Set3")
-
-    colors = cmap(np.linspace(0, 1, max(len(non_noise), 1)))
-    cluster_to_color = {cl: colors[i] for i, cl in enumerate(non_noise)}
-    cluster_to_color[-1] = (0.75, 0.75, 0.75, 0.6)  # grey noise
-
-    plt.figure(figsize=(10, 8))
-
-    for cl in unique_clusters:
-        sub = scores_df[scores_df[cluster_col] == cl]
-
-        if static_by is not None:
-            sub_static = sub[sub["_static_state"] == True]
-            sub_nonstatic = sub[sub["_static_state"] == False]
-
-            if not sub_static.empty:
-                plt.scatter(
-                    sub_static[pc_x],
-                    sub_static[pc_y],
-                    color=cluster_to_color[cl],
-                    marker="o",
-                    s=30,
-                    alpha=0.75,
-                    label=None,
-                )
-
-            if not sub_nonstatic.empty:
-                plt.scatter(
-                    sub_nonstatic[pc_x],
-                    sub_nonstatic[pc_y],
-                    color=cluster_to_color[cl],
-                    marker="X",
-                    s=30,
-                    alpha=0.75,
-                    label=None,
-                )
-        else:
-            plt.scatter(
-                sub[pc_x],
-                sub[pc_y],
-                color=cluster_to_color[cl],
-                s=30,
-                alpha=0.75,
-                label=None,
-            )
-
-    # cluster legend
-    cluster_handles = [
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            color="w",
-            markerfacecolor=cluster_to_color[cl],
-            markersize=8,
-            label="noise" if cl == -1 else str(cl),
-        )
-        for cl in unique_clusters
-    ]
-
-    plt.gca().add_artist(
-        plt.legend(handles=cluster_handles, bbox_to_anchor=(1.02, 1), loc="upper left", title=cluster_col)
-    )
-
-    # static/non-static legend
-    if static_by is not None:
-        marker_handles = [
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="black",
-                linestyle="None",
-                markersize=8,
-                label="Static",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="X",
-                color="black",
-                linestyle="None",
-                markersize=8,
-                label="Non-static",
-            ),
-        ]
-
-        plt.legend(handles=marker_handles, bbox_to_anchor=(1.02, 0.55), loc="upper left", title=static_by)
-
-    plt.title("PCA colored by HDBSCAN clusters")
-    plt.xlabel(pc_x)
-    plt.ylabel(pc_y)
-    plt.tight_layout()
-    plt.show()
-
 def summarize_labels_in_clusters(scores_df, cluster_col="cluster", label_col="label"):
-
     scores_df['label'] = scores_df['label'].apply(map_label_hierarchical)
     # Counts of labels inside each cluster
     counts = (
@@ -379,71 +274,6 @@ def summarize_labels_in_clusters(scores_df, cluster_col="cluster", label_col="la
     counts["pct_within_cluster"] = 100 * counts["count"] / counts["cluster_total"]
 
     return counts
-
-# def save_cluster_label_heatmap(
-#     ct_pct,
-#     ct_counts,
-#     filename,
-#     title="Cluster vs Label (%)"
-# ):
-#     import matplotlib.pyplot as plt
-#     import numpy as np
-
-#     fig_w = max(8, 0.6 * ct_pct.shape[1])
-#     fig_h = max(6, 0.6 * ct_pct.shape[0])
-
-#     plt.figure(figsize=(fig_w, fig_h))
-
-#     pastel_bupu = LinearSegmentedColormap.from_list(
-#         "pastel_bupu",
-#         ["#f7fcfd", "#e0ecf4", "#bfd3e6", "#9ebcda", "#c994c7", "#ddcce6"]
-#     )
-
-#     im = plt.imshow(
-#         ct_pct.values,
-#         aspect="auto",
-#         cmap=pastel_bupu,
-#         vmin=0,
-#         vmax=60   # better contrast than 100
-#     )
-
-#     plt.colorbar(im, label="% inside cluster")
-
-#     plt.xticks(
-#         np.arange(ct_pct.shape[1]),
-#         ct_pct.columns,
-#         rotation=45,
-#         ha="right",
-#         fontsize=8
-#     )
-
-#     plt.yticks(
-#         np.arange(ct_pct.shape[0]),
-#         ct_pct.index,
-#         fontsize=8
-#     )
-
-#     # ⭐ annotate BOTH percentage + counts
-#     for i in range(ct_pct.shape[0]):
-#         for j in range(ct_pct.shape[1]):
-
-#             pct = ct_pct.iloc[i, j]
-#             count = ct_counts.iloc[i, j]
-
-#             if count > 0:
-#                 plt.text(
-#                     j,
-#                     i,
-#                     f"{pct:.0f}%\n(n={count})",
-#                     ha="center",
-#                     va="center",
-#                     fontsize=7
-#                 )
-
-#     plt.title(title)
-#     plt.tight_layout()
-#     plt.savefig(filename, dpi=300)
-#     plt.close()
 
 def cluster_label_crosstab(scores_df, cluster_col="cluster", label_col="label"):
     ct = pd.crosstab(scores_df[cluster_col], scores_df[label_col])
@@ -477,14 +307,10 @@ def interactive_pca_plot(X_pca, clusters, labels):
         sel.annotation.set_text(
             f"idx: {i}\ncluster: {clusters[i]}\nlabel: {labels[i]}"
         )
-
     plt.title("Interactive PCA scatter")
     plt.show()
 
-
-
 if __name__ == "__main__":
-    
     plot_dbscan_k_distance(
         right_arm=True,
         left_arm=True,
@@ -516,13 +342,12 @@ if __name__ == "__main__":
         min_cluster_size=33
     )
 
-
     interactive_pca_plot(
     dbscan_df[["PC1", "PC2"]].to_numpy(),
     dbscan_df["cluster"].to_numpy(),
     dbscan_df["label"].to_numpy(),
-)
-    plot_pca_dbscan_clusters(dbscan_df, static_by="static_label")
+    )
+    plot_pca_clusters(dbscan_df, save_path="cluster_plots/TESTPLOT.pdf",static_by="static_label")
 
     counts = summarize_labels_in_clusters(dbscan_df)
     ct_counts, ct_pct = cluster_label_crosstab(dbscan_df)
@@ -537,6 +362,6 @@ if __name__ == "__main__":
     min_total_label_count=0,
     sort_labels=False,
     sort_clusters=False,
-)
+    )
 
   
