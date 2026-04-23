@@ -1064,9 +1064,9 @@ def ExtractIMU_features_repetitions_based(
                             **window_features_gyro_X_Time,
                             **window_features_gyro_Y_Time,
                             **window_features_gyro_Z_Time,
-                            **window_features_mag_X_Time,
-                            **window_features_mag_Y_Time,
-                            **window_features_mag_Z_Time,
+                            # **window_features_mag_X_Time,
+                            # **window_features_mag_Y_Time,
+                            # **window_features_mag_Z_Time,
                         }
 
                     elif freq_only:
@@ -1077,9 +1077,9 @@ def ExtractIMU_features_repetitions_based(
                             **window_features_gyro_X_Freq,
                             **window_features_gyro_Y_Freq,
                             **window_features_gyro_Z_Freq,
-                            **window_features_mag_X_Freq,
-                            **window_features_mag_Y_Freq,
-                            **window_features_mag_Z_Freq,
+                            # **window_features_mag_X_Freq,
+                            # **window_features_mag_Y_Freq,
+                            # **window_features_mag_Z_Freq,
                         }
 
                     else:
@@ -1096,12 +1096,12 @@ def ExtractIMU_features_repetitions_based(
                             **window_features_gyro_X_Freq,
                             **window_features_gyro_Y_Freq,
                             **window_features_gyro_Z_Freq,
-                            **window_features_mag_X_Time,
-                            **window_features_mag_Y_Time,
-                            **window_features_mag_Z_Time,
-                            **window_features_mag_X_Freq,
-                            **window_features_mag_Y_Freq,
-                            **window_features_mag_Z_Freq,
+                            # **window_features_mag_X_Time,
+                            # **window_features_mag_Y_Time,
+                            # **window_features_mag_Z_Time,
+                            # **window_features_mag_X_Freq,
+                            # **window_features_mag_Y_Freq,
+                            # **window_features_mag_Z_Freq,
                         }
                 if HDR:
                     if time_only:

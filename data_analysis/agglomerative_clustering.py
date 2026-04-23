@@ -84,7 +84,7 @@ def run_agglomerative_on_dataset(
     combined_features["label"] = combined_features["label"].apply(map_label_hierarchical)
 
     combined_features = drop_label(combined_features, "lying")
-    #combined_features = drop_label(combined_features, "break")
+    combined_features = drop_label(combined_features, "break")
 
     static_labels = combined_features["static_label"]
 

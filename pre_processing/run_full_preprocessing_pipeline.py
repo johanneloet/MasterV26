@@ -66,14 +66,14 @@ if __name__ == '__main__':
     # or non rotocol, rep_id or no rep_id. no mixing and matching allowed. 
     base_dir = Path(r"C:\Users\johalot\msc_data")
     participants = [
-        'akso_5'
+        'Prelim_6'
     ]
-    protocol = False # only relevant for the akso files. Set to true to find the prtocol files, false for work files.
-    rep_id = False # whether or not to assign a rep_id column. if set to true the code assumes you have rep id start stop .csv files in the participant directory.
-    IMU_original_fs = 100
+    protocol = True # only relevant for the akso files. Set to true to find the prtocol files, false for work files.
+    rep_id = True # whether or not to assign a rep_id column. if set to true the code assumes you have rep id start stop .csv files in the participant directory.
+    IMU_original_fs = 800
     IMU_target_fs = 100
-    resample_IMU = False # whether or not to resample IMU streams. Apply if original fs is 800! 
-    rotate_back = False
+    resample_IMU = True # whether or not to resample IMU streams. Apply if original fs is 800! 
+    rotate_back = True
 
 
     # --------------------------------------- Begin run --------------------------------------------------------------
@@ -135,12 +135,20 @@ if __name__ == '__main__':
         if protocol == True:
             try:
                 print('Trying to get akso protocol files...')
-                time_rarm = data_dir / "right_arm_protocol_reconst_time.csv"
-                time_larm = data_dir / "left_arm_protocol_reconst_time.csv"
-                time_lb = data_dir / "lower_back_protocol_reconst_time.csv"
-                time_ub = data_dir / "upper_back_protocol_reconst_time.csv"
-                time_lsole = data_dir / "left_sole_protocol_reconst_time.csv"
-                time_rsole = data_dir / "right_sole_protocol_reconst_time.csv"
+                # time_rarm = data_dir / "right_arm_protocol_reconst_time.csv"
+                # time_larm = data_dir / "left_arm_protocol_reconst_time.csv"
+                # time_lb = data_dir / "lower_back_protocol_reconst_time.csv"
+                # time_ub = data_dir / "upper_back_protocol_reconst_time.csv"
+                # time_lsole = data_dir / "left_sole_protocol_reconst_time.csv"
+                # time_rsole = data_dir / "right_sole_protocol_reconst_time.csv"
+
+                # special treatment for prelim 6. comment out this if running that file and run that file alone!
+                time_rarm = data_dir / "merged_ARM_RIGHT.csv"
+                time_larm = data_dir / "merged_ARM_LEFT.csv"
+                time_lb = data_dir / "merged_LB.csv"
+                time_ub = data_dir / "merged_UB.csv"
+                time_lsole = data_dir / "merged_lsole_time.csv"
+                time_rsole = data_dir / "merged_rsole_time.csv"
 
                 df_time_rarm = None
                 df_time_larm = None

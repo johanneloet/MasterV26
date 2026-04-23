@@ -127,11 +127,11 @@ def run_dbscan_on_dataset(
     prefixes=["prelim"],
     feature_mode="Window",
     feature_window_sec=3.5,
-    eps=2.5,
-    min_samples=20,
+    #eps=2.5,
+    min_samples=5,
     use_pca=True,
     n_pca=0.95,
-    min_cluster_size=10,
+    min_cluster_size=40,
 ):
     test_folder_dict = get_test_folder_paths()
 
@@ -172,13 +172,18 @@ def run_dbscan_on_dataset(
         df = pd.read_csv(p)
         print("COLUMNS")
         print(df.columns)
+        for col in df.columns:
+            if "upper_back" in col.lower():
+                print(col)
+        
         filename = p.name
         test_id = filename.split(f"Features_")[1].split("_expanded")[0]
+        test_id = "_".join(test_id.split("_")[1:])
         print(test_id, "<- TEST ID")
 
         parts = test_id.split("_")
         prefix = "_".join(parts[:-1]) if len(parts) > 1 else test_id
-
+        print('prefix', prefix)
         df["prefix"] = prefix
         df["test_id"] = test_id
         feature_dfs.append(df)
@@ -188,11 +193,14 @@ def run_dbscan_on_dataset(
 
     combined_features = pd.concat(feature_dfs, ignore_index=True)
     print(combined_features)
+    print("####################")
+    print("COMB FEATS LEABELs")
+    print(combined_features['label'])
     combined_features['original_label'] = combined_features['label']
     combined_features['label'] = combined_features['label'].apply(map_label_hierarchical)
 
     combined_features= drop_label(combined_features, 'lying')
-    #combined_features= drop_label(combined_features, 'break')
+    combined_features= drop_label(combined_features, 'break')
 
     static_labels = combined_features["static_label"]
     combined_features['label'] = combined_features['original_label']

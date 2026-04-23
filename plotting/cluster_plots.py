@@ -122,11 +122,11 @@ def save_cluster_label_heatmap(
 
 def plot_pca_clusters(
     scores_df,
-    save_path,
+    save_path=None,
     pc_x="PC1",
     pc_y="PC2",
     cluster_col="cluster",
-    static_by=None,
+    style_by=None,
     static_values=("static",),
     special_labels=(-1,),
     special_label_name_map=None,
@@ -136,6 +136,12 @@ def plot_pca_clusters(
     alpha=0.75,
     title=None,
 ):
+    import os
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
     df = scores_df.copy()
 
     if cluster_col not in df.columns:
@@ -143,10 +149,8 @@ def plot_pca_clusters(
     if pc_x not in df.columns or pc_y not in df.columns:
         raise ValueError(f"'{pc_x}' and/or '{pc_y}' not found in DataFrame")
 
-    if static_by is not None:
-        if static_by not in df.columns:
-            raise ValueError(f"'{static_by}' not found in DataFrame")
-        df["_static_state"] = df[static_by].isin(static_values)
+    if style_by is not None and style_by not in df.columns:
+        raise ValueError(f"'{style_by}' not found in DataFrame")
 
     unique_clusters = [c for c in pd.unique(df[cluster_col]) if pd.notna(c)]
     unique_clusters = sorted(unique_clusters, key=lambda x: str(x))
@@ -165,38 +169,72 @@ def plot_pca_clusters(
     if special_label_name_map is None:
         special_label_name_map = {}
 
-    plt.figure(figsize=figsize)
+    marker_list = ["o", "X", "s", "D", "^", "v", "P", "*"]
+    marker_map = None
+    style_labels = None
+    use_static_style = False
+
+    if style_by is not None:
+        # If this column should be treated as static/non-static
+        # then collapse to boolean styling
+        if len(static_values) > 0:
+            static_mask = df[style_by].isin(static_values)
+
+            # Only treat as static-style if column is not already a general multi-class style
+            # You can remove this condition if you always want static_values to apply.
+            if static_mask.any():
+                df["_style_group"] = static_mask
+                marker_map = {
+                    True: "o",
+                    False: "X",
+                }
+                style_labels = [True, False]
+                use_static_style = True
+            else:
+                style_labels = sorted(df[style_by].dropna().unique(), key=lambda x: str(x))
+                marker_map = {
+                    lab: marker_list[i % len(marker_list)] for i, lab in enumerate(style_labels)
+                }
+        else:
+            style_labels = sorted(df[style_by].dropna().unique(), key=lambda x: str(x))
+            marker_map = {
+                lab: marker_list[i % len(marker_list)] for i, lab in enumerate(style_labels)
+            }
+
+    fig, ax = plt.subplots(figsize=figsize)
 
     for cl in unique_clusters:
         sub = df[df[cluster_col] == cl]
 
-        if static_by is not None:
-            sub_static = sub[sub["_static_state"]]
-            sub_nonstatic = sub[~sub["_static_state"]]
-
-            if not sub_static.empty:
-                plt.scatter(
-                    sub_static[pc_x],
-                    sub_static[pc_y],
-                    color=cluster_to_color[cl],
-                    marker="o",
-                    s=point_size,
-                    alpha=alpha,
-                    label=None,
-                )
-
-            if not sub_nonstatic.empty:
-                plt.scatter(
-                    sub_nonstatic[pc_x],
-                    sub_nonstatic[pc_y],
-                    color=cluster_to_color[cl],
-                    marker="X",
-                    s=point_size,
-                    alpha=alpha,
-                    label=None,
-                )
+        if style_by is not None:
+            if use_static_style:
+                for style_lab in style_labels:
+                    subset = sub[sub["_style_group"] == style_lab]
+                    if not subset.empty:
+                        ax.scatter(
+                            subset[pc_x],
+                            subset[pc_y],
+                            color=cluster_to_color[cl],
+                            marker=marker_map[style_lab],
+                            s=point_size,
+                            alpha=alpha,
+                            label=None,
+                        )
+            else:
+                for style_lab in style_labels:
+                    subset = sub[sub[style_by] == style_lab]
+                    if not subset.empty:
+                        ax.scatter(
+                            subset[pc_x],
+                            subset[pc_y],
+                            color=cluster_to_color[cl],
+                            marker=marker_map[style_lab],
+                            s=point_size,
+                            alpha=alpha,
+                            label=None,
+                        )
         else:
-            plt.scatter(
+            ax.scatter(
                 sub[pc_x],
                 sub[pc_y],
                 color=cluster_to_color[cl],
@@ -205,22 +243,19 @@ def plot_pca_clusters(
                 label=None,
             )
 
-    cluster_handles = []
-    for cl in unique_clusters:
-        label = special_label_name_map.get(cl, str(cl))
-        cluster_handles.append(
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="w",
-                markerfacecolor=cluster_to_color[cl],
-                markersize=8,
-                label=label,
-            )
+    cluster_handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=cluster_to_color[cl],
+            markersize=8,
+            label=special_label_name_map.get(cl, str(cl)),
         )
+        for cl in unique_clusters
+    ]
 
-    ax = plt.gca()
     cluster_legend = ax.legend(
         handles=cluster_handles,
         bbox_to_anchor=(1.02, 1),
@@ -229,40 +264,56 @@ def plot_pca_clusters(
     )
     ax.add_artist(cluster_legend)
 
-    if static_by is not None:
-        marker_handles = [
-            Line2D(
-                [0],
-                [0],
-                marker="o",
-                color="black",
-                linestyle="None",
-                markersize=8,
-                label="Static",
-            ),
-            Line2D(
-                [0],
-                [0],
-                marker="X",
-                color="black",
-                linestyle="None",
-                markersize=8,
-                label="Non-static",
-            ),
-        ]
+    if style_by is not None:
+        if use_static_style:
+            marker_handles = [
+                Line2D(
+                    [0],
+                    [0],
+                    marker=marker_map[True],
+                    color="black",
+                    linestyle="None",
+                    markersize=8,
+                    label="Static",
+                ),
+                Line2D(
+                    [0],
+                    [0],
+                    marker=marker_map[False],
+                    color="black",
+                    linestyle="None",
+                    markersize=8,
+                    label="Non-static",
+                ),
+            ]
+        else:
+            marker_handles = [
+                Line2D(
+                    [0],
+                    [0],
+                    marker=marker_map[lab],
+                    color="black",
+                    linestyle="None",
+                    markersize=8,
+                    label=str(lab),
+                )
+                for lab in style_labels
+            ]
+
         ax.legend(
             handles=marker_handles,
             bbox_to_anchor=(1.02, 0.55),
             loc="upper left",
-            title=static_by,
+            title=style_by,
         )
 
-    plt.title(title or f"PCA colored by {cluster_col}")
-    plt.xlabel(pc_x)
-    plt.ylabel(pc_y)
+    ax.set_title(title or f"PCA colored by {cluster_col}")
+    ax.set_xlabel(pc_x)
+    ax.set_ylabel(pc_y)
     plt.tight_layout()
-    #plt.show()
 
     if save_path is not None:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        directory = os.path.dirname(save_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
         plt.savefig(save_path, bbox_inches="tight")

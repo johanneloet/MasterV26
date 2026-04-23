@@ -43,8 +43,8 @@ def map_label_hierarchical(label):
     def has_any(*terms):
         return any(term in label for term in terms)
 
-    # if "break" in label:
-    #     return "break"
+    if "break" in label:
+        return "break"
 
     if "lying" in label:
         return "lying"

@@ -199,7 +199,7 @@ def run_feature_extraction(
         if lower_back_df is not None:
             feat_muse_lback, window_labels_lback, window_static_labels_lback = ExtractIMU_features_window_based(
                 imu_data=lower_back_df,
-                sensor_name="Lower_back",
+                sensor_name="Lower_Back",
                 fs=IMU_sampling_rates,
                 window_sec=window_sec,
                 use_rep_id=use_rep_id,
@@ -213,7 +213,7 @@ def run_feature_extraction(
         if upper_back_df is not None:
             feat_muse_uback, window_labels_uback, window_static_labels_uback = ExtractIMU_features_window_based(
                 imu_data=upper_back_df,
-                sensor_name="Upper_back",
+                sensor_name="Upper_Back",
                 fs=IMU_sampling_rates,
                 window_sec=window_sec,
                 use_rep_id=use_rep_id,
@@ -501,15 +501,16 @@ if __name__ == "__main__":
         # 'prelim_3',
         # 'prelim_4',
         # 'prelim_5',
+        'prelim_6',
         # 'aksoprotocol_1',
         # 'aksoprotocol_2',
         # 'aksoprotocol_3',
         # 'aksoprotocol_4',
-        'aksowork_1',
-        'aksowork_2',
-        'aksowork_3',
-        'aksowork_4',
-        'aksowork_5'
+        # 'aksowork_1',
+        # 'aksowork_2',
+        # 'aksowork_3',
+        # 'aksowork_4',
+        # 'aksowork_5'
     ]
 
     #### Define scenarios to be used in feature extraction ####
@@ -536,15 +537,14 @@ if __name__ == "__main__":
         "left_arm",
     ]
 
-
     # Define settings
-    mode = "Window"              # "window" or "repetition"
+    mode = "Repetition"              # "window" or "repetition"
     expanded_fsr = True
     imu_sampling_rate = 100 # original sampling rate of the files in this run
     resample_signal = False  # set True if these files need IMU resampling
     target_fs = 100              # target IMU fs after resampling
-    window_sec = 2.5
-    use_rep_id = False # if False, use consecutive label runs instead
+    window_sec = 3.5
+    use_rep_id = True # if False, use consecutive label runs instead
 
     # Run with selected settings!
     # NB IMU sampling rates must be consistent across all participants. Run different sampling rates in separate runs!
@@ -558,5 +558,4 @@ if __name__ == "__main__":
         resample_signal=resample_signal,
         target_fs=target_fs,
         window_sec=window_sec,
-        use_rep_id=use_rep_id,
-    )
+        use_rep_id=use_rep_id,)

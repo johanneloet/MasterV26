@@ -46,7 +46,7 @@ def run_clustering_analysis(analysis_scenarios):
             )
             plot_pca_clusters(dbscan_df,
                               save_path= f"cluster_plots/dbscan_{strat}_{scenario["id"]}.pdf",
-                              static_by="static_label")
+                              style_by="prefix")
             save_cluster_label_heatmap(
             dbscan_df,
             filename=f"dbscan_cluster_heatmap_{scenario["id"]}_{strat}.pdf",
@@ -75,7 +75,7 @@ def run_clustering_analysis(analysis_scenarios):
             )
             plot_pca_clusters(kmeans_df,
                               save_path= f"cluster_plots/kmeans_{strat}_{scenario["id"]}.pdf",
-                              static_by="static_label")
+                              style_by="prefix")
             save_cluster_label_heatmap(
             kmeans_df,
             filename=f"kmeans_cluster_heatmap_{scenario["id"]}_{strat}.pdf",
@@ -105,7 +105,7 @@ def run_clustering_analysis(analysis_scenarios):
             )
             plot_pca_clusters(agglo_df,
                               save_path= f"cluster_plots/agglomerative_{strat}_{scenario["id"]}.pdf",
-                              static_by="static_label")
+                              style_by="prefix")
             save_cluster_label_heatmap(
             agglo_df,
             filename=f"agglomerative_cluster_heatmap_{scenario["id"]}_{strat}.pdf",
@@ -144,21 +144,23 @@ if __name__ == '__main__':
         #  "id" : "C1"
         #  }, 
          #C2
-        # {"datasets" : ["prelim", "aksoprotocol"],
-        #  "sensors" : full_6_sensors,
-        #  "segmentation_strategies" : ["Window2.5", "Window3.5", "Window5", "Repetition3.5"],
-        #  "id" : "C2"
-        #  }, 
-        #  #C3
-        # {"datasets" : ["aksowork"],
-        #  "sensors" : full_6_sensors,
-        #  "segmentation_strategies" : ["Window2.5", "Window3.5", "Window5", "Repetition3.5"],
-        #  "id" : "C3"
-         #}, 
-         #C4
-         {"datasets" : ["aksowork", "askoprotocol", "prelim"],
+        {"datasets" : ["prelim", "aksoprotocol"],
          "sensors" : full_6_sensors,
          "segmentation_strategies" : ["Window2.5", "Window3.5", "Window5", "Repetition3.5"],
+         "id" : "C2"
+         }, 
+         #C3
+        {"datasets" : ["aksowork"],
+         "sensors" : full_6_sensors,
+         "segmentation_strategies" : ["Window2.5", "Window3.5", "Window5", "Repetition3.5"],
+         "id" : "C3"
+         }, 
+         #C4
+         {"datasets" : ["aksowork", "aksoprotocol", "prelim"],
+         "sensors" : full_6_sensors,
+         "segmentation_strategies" : [
+             "Window2.5", "Window3.5", "Window5", 
+                                      "Repetition3.5"],
          "id" : "C4" 
          }, 
          #C5

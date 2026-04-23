@@ -425,12 +425,12 @@ def ExtractPressure_Features_window_based(
 
         baseline_time_feats = get_Time_Domain_features_of_signal(
             mean_signal,
-            f"fsr_mean_{sensor_name}",
+            f"fsr_aver_{sensor_name}",
         )
 
         baseline_freq_feats = get_Freq_Domain_features_of_signal(
             mean_signal,
-            f"fsr_mean_{sensor_name}",
+            f"fsr_aver_{sensor_name}",
             fs,
         )
 
