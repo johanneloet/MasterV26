@@ -622,14 +622,18 @@ def ExtractIMU_features_repetitions_based(
         print(f"Getting features from window {start_idx} to {end_idx}")
         print("Performing sanity check: [is label is consistent with repetition ID?]")
         print(".....")
-        if window_label in imu_data.iloc[start_idx]["rep_id"]:
-            print("Sanity passed")
-        else:
-            print(
-                f"Rep id is {imu_data.iloc[start_idx]['rep_id']}, while label is {window_label}"
-            )
-            print("Sleeping for 60 seconds")
-            time.sleep(60)
+        if window_label not in ["walking","standing","sitting","neutral_load","neutral_load_left","neutral_load_right"]:
+            print("Label is", window_label)
+            if window_label in imu_data.iloc[start_idx]["rep_id"]:
+                print("Sanity passed")
+            else:
+                print(
+                    f"Rep id is {imu_data.iloc[start_idx]['rep_id']}, while label is {window_label}"
+                )
+                print("Sleeping for 60 seconds")
+                time.sleep(60)
+        else: 
+            print("Not relevant, label is continuous...")
 
         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])

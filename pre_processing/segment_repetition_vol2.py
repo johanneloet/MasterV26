@@ -175,9 +175,9 @@ def get_start_stop_times_from_peaks(
         if side_mode == "alternate":
             # L, R, L, R...
             if rep_number % 2 == 0:
-                side = "right"
-            else:
                 side = "left"
+            else:
+                side = "right"
             rep_name = f"{activity_name}_{side}_{rep_number}"
 
         elif side_mode == "sequential":
@@ -220,6 +220,11 @@ def assign_rep_ids(
 
     # Validate rep_id presence
     for name, df in sensor_dfs.items():
+        if df is None:
+            print(f"⚠️ WARNING: '{name}' skipped (dataframe is None)")
+            skipped.append(name)
+            continue
+    
         if "rep_id" not in df.columns:
             print(f"⚠️ WARNING: '{name}' skipped (missing 'rep_id' column)")
             skipped.append(name)

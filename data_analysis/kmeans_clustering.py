@@ -12,7 +12,7 @@ from feature_extraction.get_paths import get_test_folder_paths
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-from utils import map_label_hierarchical, drop_label
+from utils import drop_label
 from plotting.cluster_plots import save_cluster_label_heatmap
 
 from matplotlib.colors import LinearSegmentedColormap
@@ -133,6 +133,7 @@ def run_kmeans_on_dataset(
     prefixes=["prelim"],
     feature_mode="Window",
     feature_window_length=3.5,
+    map_label_fn = None,
     n_clusters=8,
     use_pca=True,
     n_pca=0.95,
@@ -188,10 +189,25 @@ def run_kmeans_on_dataset(
         raise ValueError("No feature files found for the requested configuration.")
 
     combined_features = pd.concat(feature_dfs, ignore_index=True)
-    combined_features['label'] = combined_features['label'].apply(map_label_hierarchical)
+    #combined_features['label'] = combined_features['label'].apply(map_label_fn)
+    # combined_features['label'] = combined_features.apply(
+    # lambda row: map_label_fn(row["label"], row.get("static_label", None)),
+    # axis=1
+    # )
+    
+    combined_features = drop_label(combined_features, "lying_arms_up")
+    
+    # drop all labels containing "break"
+    combined_features = combined_features[
+        ~combined_features["label"].astype(str).str.contains(
+            "break",
+            case=False,
+            na=False
+        )
+    ].copy()
 
-    combined_features = drop_label(combined_features, "lying")
-    combined_features = drop_label(combined_features, "break")
+    labels = combined_features["label"]
+
 
     static_labels = combined_features["static_label"]
 
@@ -238,9 +254,10 @@ def run_kmeans_on_dataset(
     out_df = pd.DataFrame(X_model[:, :2], columns=["PC1", "PC2"])
     out_df["cluster"] = clusters
     out_df["static_label"] = static_labels
-
     for col in meta.columns:
         out_df[col] = meta[col].values
+    
+    out_df["label"] = labels
 
     return out_df, km, pca, scaler
 

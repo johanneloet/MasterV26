@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use("Agg") # fix for runtimerror
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
@@ -120,6 +123,116 @@ def save_cluster_label_heatmap(
 
     return ct_counts, ct_pct
 
+
+def save_cluster_label_stacked_bar(
+    df,
+    filename,
+    cluster_col="cluster",
+    label_col="label",
+    title="Cluster composition by label (%)",
+    map_label_fn=None,
+    drop_noise=False,
+    noise_label=-1,
+    min_total_label_count=0,
+    sort_labels=True,
+    sort_clusters=False,
+    figsize=None,
+):
+    plot_df = df.copy()
+
+    if map_label_fn is not None:
+        plot_df[label_col] = plot_df[label_col].apply(map_label_fn)
+
+    if drop_noise:
+        plot_df = plot_df[plot_df[cluster_col] != noise_label].copy()
+
+    if min_total_label_count > 0:
+        total_counts = plot_df[label_col].value_counts()
+        rare_labels = total_counts[total_counts < min_total_label_count].index
+        plot_df[label_col] = plot_df[label_col].where(
+            ~plot_df[label_col].isin(rare_labels),
+            "other"
+        )
+
+    # Counts and row-normalized percentages
+    ct_counts = pd.crosstab(plot_df[cluster_col], plot_df[label_col])
+    ct_pct = pd.crosstab(
+        plot_df[cluster_col],
+        plot_df[label_col],
+        normalize="index"
+    ) * 100
+
+    if sort_labels:
+        label_order = ct_pct.max(axis=0).sort_values(ascending=False).index
+        ct_counts = ct_counts[label_order]
+        ct_pct = ct_pct[label_order]
+
+    if sort_clusters:
+        cluster_order = ct_counts.sum(axis=1).sort_values(ascending=False).index
+        ct_counts = ct_counts.loc[cluster_order]
+        ct_pct = ct_pct.loc[cluster_order]
+
+    if figsize is None:
+        figsize = (
+            max(8, 0.8 * ct_pct.shape[0]),
+            max(4.5, 0.45 * ct_pct.shape[1])
+        )
+
+    fig, ax = plt.subplots(figsize=figsize)
+    import numpy as np
+
+    n_labels = ct_pct.shape[1]
+
+    # Option 1 (recommended): tab20 + tab20b combo
+    # muted/truncated BuPu palette
+    base_cmap = plt.cm.Blues
+
+    truncated_bupu = LinearSegmentedColormap.from_list(
+        "truncated_BuPu",
+        base_cmap(np.linspace(0.25, 0.8, 256))
+    )
+
+    colors = truncated_bupu(
+        np.linspace(0, 1, n_labels)
+    )
+
+    ct_pct.plot(
+    kind="bar",
+    stacked=True,
+    ax=ax,
+    width=0.85,
+    edgecolor="white",
+    linewidth=0.4,
+    color=colors,
+    alpha=0.5
+    )
+
+    ax.set_ylim(0, 100)
+    ax.set_xlabel("Cluster")
+    ax.set_ylabel("% inside cluster")
+    ax.set_title(title)
+
+    # Add cluster sizes under x labels
+    cluster_sizes = ct_counts.sum(axis=1)
+    ax.set_xticklabels(
+        [f"{idx}\n(n={cluster_sizes.loc[idx]})" for idx in ct_pct.index],
+        rotation=0,
+        fontsize=9
+    )
+
+    ax.legend(
+        title="Label",
+        bbox_to_anchor=(1.02, 1),
+        loc="upper left",
+        frameon=False
+    )
+
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    return ct_counts, ct_pct
+
 def plot_pca_clusters(
     scores_df,
     save_path=None,
@@ -130,7 +243,7 @@ def plot_pca_clusters(
     static_values=("static",),
     special_labels=(-1,),
     special_label_name_map=None,
-    cmap_name="tab20",
+    cmap_name="pink_yellow_turquoise",
     figsize=(10, 8),
     point_size=30,
     alpha=0.75,
@@ -158,7 +271,16 @@ def plot_pca_clusters(
     special_labels = set(special_labels or [])
     regular_clusters = [c for c in unique_clusters if c not in special_labels]
 
-    cmap = plt.get_cmap(cmap_name)
+    if cmap_name == "pink_yellow_turquoise":
+        from matplotlib.colors import LinearSegmentedColormap
+
+        cmap = LinearSegmentedColormap.from_list(
+            "pink_yellow_turquoise",
+            ["#ff8fc1", "#ffe680", "#63d8d1"]
+        )
+    else:
+        cmap = plt.get_cmap(cmap_name)
+
     colors = cmap(np.linspace(0, 1, max(len(regular_clusters), 1)))
     cluster_to_color = {cl: colors[i] for i, cl in enumerate(regular_clusters)}
 

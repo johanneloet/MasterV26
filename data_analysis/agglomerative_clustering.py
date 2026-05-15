@@ -9,7 +9,7 @@ from feature_extraction.get_paths import get_test_folder_paths
 import matplotlib.pyplot as plt
 from scipy.cluster.hierarchy import linkage, dendrogram
 
-from utils import map_label_hierarchical, drop_label
+from utils import drop_label
 from plotting.cluster_plots import save_cluster_label_heatmap
 
 
@@ -28,7 +28,8 @@ def run_agglomerative_on_dataset(
     linkage_method="ward",
     metric="euclidean",
     use_pca=True,
-    n_pca=0.85,
+    n_pca=0.95,
+    map_label_fn=None
 ):
     test_folder_dict = get_test_folder_paths()
 
@@ -81,10 +82,24 @@ def run_agglomerative_on_dataset(
         raise ValueError("No feature files found for the requested configuration.")
 
     combined_features = pd.concat(feature_dfs, ignore_index=True)
-    combined_features["label"] = combined_features["label"].apply(map_label_hierarchical)
+    #combined_features["label"] = combined_features["label"].apply(map_label_fn)
+    # combined_features['label'] = combined_features.apply(
+    # lambda row: map_label_fn(row["label"], row.get("static_label", None)),
+    # axis=1
+    # )
+    
+    # drop all labels containing "break"
+    combined_features = combined_features[
+        ~combined_features["label"].astype(str).str.contains(
+            "break",
+            case=False,
+            na=False
+        )
+    ].copy()
 
-    combined_features = drop_label(combined_features, "lying")
-    combined_features = drop_label(combined_features, "break")
+    labels = combined_features["label"]
+        
+    combined_features = drop_label(combined_features, "lying_arms_up")
 
     static_labels = combined_features["static_label"]
 
@@ -146,6 +161,11 @@ def run_agglomerative_on_dataset(
     out_df = pd.DataFrame(X_model[:, :2], columns=["PC1", "PC2"])
     out_df["cluster"] = clusters
     out_df["static_label"] = static_labels
+    
+    for col in meta.columns:
+        out_df[col] = meta[col].values
+    
+    out_df["label"] = labels
 
     for col in meta.columns:
         out_df[col] = meta[col].values

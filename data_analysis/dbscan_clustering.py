@@ -12,7 +12,7 @@ from sklearn.cluster import HDBSCAN
 from feature_extraction.get_paths import get_test_folder_paths
 import matplotlib.pyplot as plt
 
-from utils import map_label_hierarchical, drop_label
+from utils import drop_label
 from matplotlib.colors import LinearSegmentedColormap
 
 from plotting.cluster_plots import save_cluster_label_heatmap, plot_pca_clusters
@@ -127,11 +127,11 @@ def run_dbscan_on_dataset(
     prefixes=["prelim"],
     feature_mode="Window",
     feature_window_sec=3.5,
-    #eps=2.5,
-    min_samples=5,
+    map_label_fn=None,
+    min_samples=3,
     use_pca=True,
     n_pca=0.95,
-    min_cluster_size=40,
+    min_cluster_size=50,
 ):
     test_folder_dict = get_test_folder_paths()
 
@@ -197,13 +197,24 @@ def run_dbscan_on_dataset(
     print("COMB FEATS LEABELs")
     print(combined_features['label'])
     combined_features['original_label'] = combined_features['label']
-    combined_features['label'] = combined_features['label'].apply(map_label_hierarchical)
+    # combined_features['label'] = combined_features.apply(
+    # lambda row: map_label_fn(row["label"], row.get("static_label", None)),
+    # axis=1
+    # )
+    combined_features= drop_label(combined_features, "lying_arms_up")
+    # drop all labels containing "break"
+    combined_features = combined_features[
+        ~combined_features["label"].astype(str).str.contains(
+            "break",
+            case=False,
+            na=False
+        )
+    ].copy()
 
-    combined_features= drop_label(combined_features, 'lying')
-    combined_features= drop_label(combined_features, 'break')
+    labels = combined_features["label"]
 
     static_labels = combined_features["static_label"]
-    combined_features['label'] = combined_features['original_label']
+    # combined_features['label'] = combined_features['original_label']
     combined_features.drop(columns=['original_label'])
     metadata_cols = [
         "label",
@@ -248,7 +259,8 @@ def run_dbscan_on_dataset(
         min_samples=min_samples,
         metric="euclidean",
         cluster_selection_method="eom",
-        n_jobs=-1 
+        n_jobs=-1,
+        cluster_selection_epsilon=0.1,
     )
     clusters = db.fit_predict(X_model)
 
@@ -264,59 +276,10 @@ def run_dbscan_on_dataset(
 
     for col in meta.columns:
         out_df[col] = meta[col].values
+    
+    out_df["label"] = labels
 
     return out_df, db, pca, scaler
-
-def summarize_labels_in_clusters(scores_df, cluster_col="cluster", label_col="label"):
-    scores_df['label'] = scores_df['label'].apply(map_label_hierarchical)
-    # Counts of labels inside each cluster
-    counts = (
-        scores_df.groupby([cluster_col, label_col])
-        .size()
-        .reset_index(name="count")
-        .sort_values([cluster_col, "count"], ascending=[True, False])
-    )
-
-    # Percent composition within each cluster
-    counts["cluster_total"] = counts.groupby(cluster_col)["count"].transform("sum")
-    counts["pct_within_cluster"] = 100 * counts["count"] / counts["cluster_total"]
-
-    return counts
-
-def cluster_label_crosstab(scores_df, cluster_col="cluster", label_col="label"):
-    ct = pd.crosstab(scores_df[cluster_col], scores_df[label_col])
-    ct_pct = pd.crosstab(
-        scores_df[cluster_col],
-        scores_df[label_col],
-        normalize="index"
-    ) * 100
-    return ct, ct_pct
-
-import matplotlib.pyplot as plt
-import mplcursors
-
-def interactive_pca_plot(X_pca, clusters, labels):
-
-    fig, ax = plt.subplots(figsize=(8,6))
-
-    sc = ax.scatter(
-        X_pca[:,0],
-        X_pca[:,1],
-        c=clusters,
-        cmap="tab20",
-        s=20
-    )
-
-    cursor = mplcursors.cursor(sc, hover=True)
-
-    @cursor.connect("add")
-    def on_add(sel):
-        i = sel.index
-        sel.annotation.set_text(
-            f"idx: {i}\ncluster: {clusters[i]}\nlabel: {labels[i]}"
-        )
-    plt.title("Interactive PCA scatter")
-    plt.show()
 
 if __name__ == "__main__":
     plot_dbscan_k_distance(

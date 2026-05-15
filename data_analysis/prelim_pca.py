@@ -8,7 +8,7 @@ import numpy as np
 
 from feature_extraction.get_paths import get_test_folder_paths, get_one_foler_path
 from plotting.pca_plots import plot_pca_scores, plot_pca_subplots, plot_scree
-from utils import map_label_hierarchical, drop_label
+from utils import map_taxonomy_candidate_3, map_taxonomy_candidate_4, drop_label
 
 
 import pandas as pd
@@ -54,7 +54,7 @@ def run_pca_on_dataset(
     for test_id, folder_path in test_folder_dict.items():
         if test_id.split("_")[0] in prefixes:
             feature_filename = (
-                f"Features_{feature_mode}_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+                f"Features_{feature_mode}_{test_id}_expanded{expanded_fsr}_SEGWindow3.5_{sensor_combo_scenario}.csv"
             )
             include_csvs.append(Path(folder_path) / feature_filename)
 
@@ -75,9 +75,9 @@ def run_pca_on_dataset(
     
 
     combined_features = pd.concat(feature_dfs, ignore_index=True)
-    combined_features["label"] = combined_features["label"].apply(map_label_hierarchical)
+    combined_features["label"] = combined_features["label"].apply(map_taxonomy_candidate_3)
     print("samples:", len(combined_features))
-    combined_features = drop_label(combined_features, 'lying')
+    combined_features = drop_label(combined_features, 'other')
     # combined_features = drop_label(combined_features, 'break')
 
     y = combined_features["label"]
@@ -118,17 +118,27 @@ def run_pca_on_dataset(
 
 if __name__ == "__main__":
     scores, pca = run_pca_on_dataset(
-        left_arm=True,
-        upper_back=True,
+        left_arm=False,
+        upper_back=False,
         expanded_fsr=True,
-        prefixes=["aksowork", "prelim", "aksoprotocol"],
+        prefixes=[ "aksowork", "prelim", "aksoprotocol", "test"],
     )
     plot_scree(pca)
-    plot_pca_scores(scores, pc_x=1, pc_y=2)
-    #plot_pca_subplots(scores, color_by="label", style_by='prefix')
-    plot_pca_subplots(
+    plot_pca_scores(
     scores,
+    pca=pca,
+    pc_x=1,
+    pc_y=2,
     color_by="label",
-    static_by="static_label",
-    static_values=("static",),
+    #style_by="prefix",
+    title="PCA projection for DC7, colored by T2",
+    save_path="pca_dc7_t2.pdf",
 )
+    #plot_pca_scores(scores, pc_x=1, pc_y=2)
+    #plot_pca_subplots(scores, color_by="label", style_by='prefix')
+#     plot_pca_subplots(
+#     scores,
+#     color_by="label",
+#     static_by="static_label",
+#     static_values=("static",),
+# )

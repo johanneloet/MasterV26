@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 
-def detect_spikes(file_path):
+def detect_spikes(file_path, height=10000, distance=500):
     df = pd.read_csv(file_path)
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
     df["acc_mag"] = np.sqrt(df["Axl.X"] ** 2 + df["Axl.Y"] ** 2 + df["Axl.Z"] ** 2)
 
-    peaks, _ = find_peaks(df["acc_mag"], height=10000, distance=500)
+    peaks, _ = find_peaks(df["acc_mag"], height=height, distance=distance)
 
     return df, peaks
 

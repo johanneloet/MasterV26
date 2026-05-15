@@ -41,8 +41,8 @@ if __name__ == '__main__':
         lb_df_rotated = rotate_axl_mag_gyr_180_deg_abt_z_axis(file_paths['lower_back'])
         ub_df_rotated = rotate_axl_mag_gyr_180_deg_abt_z_axis(file_paths['upper_back'])
 
-        lb_df_rotated.to_csv(f'{file_paths['lower_back'].rstrip('.csv')}_rotated.csv', index=False)
-        ub_df_rotated.to_csv(f'{file_paths['upper_back'].rstrip('.csv')}_rotated.csv', index=False)
+        lb_df_rotated.to_csv(f"{file_paths['lower_back'].rstrip('.csv')}_rotated.csv", index=False)
+        ub_df_rotated.to_csv(f"{file_paths['upper_back'].rstrip('.csv')}_rotated.csv", index=False)
 
         # WHEN DONE UPDATE GET PATHS WITH NEW FILE NAMES !! (add the _rotated suffix)
     print("Done! Remember to update get_paths with the rotated filenames:)")

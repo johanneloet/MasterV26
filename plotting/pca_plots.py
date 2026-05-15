@@ -8,28 +8,138 @@ from matplotlib.lines import Line2D
 # Code developed during the preliminary PCA to study where the activities fall in different PC spaces.
 
 
-def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
+def plot_pca_scores(
+    scores_df,
+    pca=None,
+    pc_x=1,
+    pc_y=2,
+    color_by="label",
+    style_by=None,
+    title=None,
+    save_path=None,
+    figsize=(8, 6),
+    alpha=0.75,
+):
     x_col = f"PC{pc_x}"
     y_col = f"PC{pc_y}"
 
-    plt.figure(figsize=(8, 6))
+    if x_col not in scores_df.columns or y_col not in scores_df.columns:
+        raise ValueError(f"{x_col} or {y_col} not found in scores_df.")
 
-    labels = sorted(scores_df["label"].unique())
-    cmap = plt.get_cmap("tab20b", len(labels))
-    color_map = {lab: cmap(i) for i, lab in enumerate(labels)}
+    fig, ax = plt.subplots(figsize=figsize)
 
-    for label in labels:
-        subset = scores_df[scores_df["label"] == label]
-        plt.scatter(
-            subset[x_col], subset[y_col], label=label, alpha=0.7, color=color_map[label]
-        )
+    from matplotlib.colors import LinearSegmentedColormap
+    import numpy as np
 
-    plt.xlabel(x_col)
-    plt.ylabel(y_col)
-    plt.title(f"PCA Score Plot ({x_col} vs {y_col})")
-    plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
+    labels = sorted(scores_df[color_by].dropna().unique())
+
+    # pastel neon pink -> cream -> turquoise
+    custom_cmap = LinearSegmentedColormap.from_list(
+        "custom_pastel",
+         ["#ff8fc1", "#ffe680", "#63d8d1"]
+    )
+
+    colors = custom_cmap(
+        np.linspace(0, 1, len(labels))
+    )
+
+    color_map = {
+        lab: colors[i]
+        for i, lab in enumerate(labels)
+    }
+
+    if style_by is not None:
+        styles = sorted(scores_df[style_by].dropna().unique())
+        markers = ["o", "s", "^", "D", "P", "X", "v", "<", ">"]
+        marker_map = {
+            style: markers[i % len(markers)]
+            for i, style in enumerate(styles)
+        }
+
+        for label in labels:
+            for style in styles:
+                subset = scores_df[
+                    (scores_df[color_by] == label) &
+                    (scores_df[style_by] == style)
+                ]
+
+                if subset.empty:
+                    continue
+
+                ax.scatter(
+                    subset[x_col],
+                    subset[y_col],
+                    label=f"{label} | {style}",
+                    alpha=alpha,
+                    color=color_map[label],
+                    marker=marker_map[style],
+                    s=20,
+                )
+    else:
+        for label in labels:
+            subset = scores_df[scores_df[color_by] == label]
+
+            ax.scatter(
+                subset[x_col],
+                subset[y_col],
+                label=label,
+                alpha=alpha,
+                color=color_map[label],
+                s=20,
+            )
+
+    if pca is not None:
+        x_var = pca.explained_variance_ratio_[pc_x - 1] * 100
+        y_var = pca.explained_variance_ratio_[pc_y - 1] * 100
+        ax.set_xlabel(f"{x_col} ({x_var:.1f}% variance)")
+        ax.set_ylabel(f"{y_col} ({y_var:.1f}% variance)")
+    else:
+        ax.set_xlabel(x_col)
+        ax.set_ylabel(y_col)
+
+    if title is None:
+        title = f"PCA score plot colored by {color_by}"
+
+    ax.set_title(title)
+
+    ax.legend(
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
+        frameon=False,
+        fontsize=8,
+    )
+
     plt.tight_layout()
-    plt.show()
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+    else:
+        plt.show()
+
+
+# def plot_pca_scores(scores_df, pc_x=1, pc_y=2):
+#     x_col = f"PC{pc_x}"
+#     y_col = f"PC{pc_y}"
+
+#     plt.figure(figsize=(8, 6))
+
+#     labels = sorted(scores_df["label"].unique())
+#     cmap = plt.get_cmap("tab20b", len(labels))
+#     color_map = {lab: cmap(i) for i, lab in enumerate(labels)}
+
+#     for label in labels:
+#         subset = scores_df[scores_df["label"] == label]
+#         plt.scatter(
+#             subset[x_col], subset[y_col], label=label, alpha=0.7, color=color_map[label]
+#         )
+
+#     plt.xlabel(x_col)
+#     plt.ylabel(y_col)
+#     plt.title(f"PCA Score Plot ({x_col} vs {y_col})")
+#     plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
+#     plt.tight_layout()
+#     plt.show()
 
 
 def plot_pca_subplots(
@@ -90,16 +200,29 @@ def plot_pca_subplots(
 
     fig.subplots_adjust(right=0.82)
 
-    # ---- COLOR SETUP ----
-    color_labels = sorted(scores_df[color_by].dropna().unique())
+    from matplotlib.colors import LinearSegmentedColormap
+    import numpy as np
 
-    cmap = (
-        list(plt.cm.tab20.colors)
-        + list(plt.cm.tab20b.colors)
-        + list(plt.cm.tab20c.colors)
+    labels = sorted(scores_df[color_by].dropna().unique())
+
+    # pastel neon pink -> cream -> turquoise
+    custom_cmap = LinearSegmentedColormap.from_list(
+        "custom_pastel",
+        [
+            "#f4a3c4",  # soft pink
+            "#f3e6a3",  # pastel cream/yellow
+            "#7fd3d0",  # turquoise
+        ]
     )
 
-    color_map = {lab: cmap[i % len(cmap)] for i, lab in enumerate(color_labels)}
+    colors = custom_cmap(
+        np.linspace(0, 1, len(labels))
+    )
+
+    color_map = {
+        lab: colors[i]
+        for i, lab in enumerate(labels)
+    }
 
     # ---- MARKER SETUP ----
     marker_list = ["o", "X", "s", "D", "^", "v", "P", "*"]

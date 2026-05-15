@@ -30,200 +30,394 @@ def get_nearest_row_by_time(df, t, time_col="ReconstructedTime"):
     return df.loc[i]
 
 
-def map_label_hierarchical(label):
-    if pd.isna(label):
-        return None
 
-    label = str(label).lower().strip()
-    label = re.sub(r"[\s\-]+", "_", label)
-
-    def has(*terms):
-        return all(term in label for term in terms)
-
-    def has_any(*terms):
-        return any(term in label for term in terms)
-
-    if "break" in label:
-        return "break"
-
-    if "lying" in label:
-        return "lying"
-
-    if has("welding", "upright"):
-        return "welding_upright"
-
-    if has("welding") and has_any("lean", "left", "right", "twist"):
-        return "welding_lean_twist"
-
-    if has("welding", "arm"):
-        return "welding_arms"
-
-    if has("welding"):
-        return "welding"
-
-    if has_any("stairs", "stair", "ladder"):
-        return "stairs_ladder"
-
-    if has_any("walk", "walking"):
-        return "walking"
-
-    if "carry" in label:
-        return "carry"
-
-    if has_any("pull", "drag", "push"):
-        return "push_pull_drag"
-
-    if has_any("neutral_load_left", "neutral_load_right"):
-        return "neutral_load"
-
-    if "twist" in label:
-        return "twist"
-
-    if has_any("lean_forward", "forward_lean", "bend_forward", "forward_bend"):
-        return "forward_lean"
-
-    if has_any("lean_left", "left_lean", "bend_left", "left_bend"):
-        return "left_lean"
-
-    if has_any("lean_right", "right_lean", "bend_right", "right_bend"):
-        return "right_lean"
-
-    if has_any("lean", "bend"):
-        return "trunk_flexion_unspecified"
-
-    if "left_arm" in label:
-        return "left_arm"
-
-    if has_any("right_arm", "shoulder_load"):
-        return "right_arm"
-
-    if re.search(r"\barms?\b", label):
-        return "both_arms_movement"
-
-    if has("arm", "forward"):
-        return "arms_forward"
-
-    if has("shoulder"):
-        return "shoulder_load"
-
-    if has_any("drill", "grind", "vibration"):
-        return "vibration"
-
-    if has_any("squat", "sit_squat", "crawl", "climb"):
-        return "low_movement"
-
-    return label
-
-def map_label_coarse(hier, static_label):
-    if hier is None:
-        return None
-
-    if static_label == "static":
-        return "static"
-
-    if hier in {"walking", "stairs_ladder"}:
-        return "locomotion"
-
-    return "intermediate"
+def contains_any(label, keywords):
+    return any(k in label for k in keywords)
 
 def drop_label(df, label_to_drop):
     return df[df["label"] != label_to_drop].reset_index(drop=True)
 
 
-def map_label_taxonomy_v1(label):
+def map_taxonomy_candidate_1(label, static_label=None):
+    print("label is", label)
+
+    if contains_any(label, ["lying"]):
+        print("mapped to other")
+        return "other"
+
+    if contains_any(label, ["walk", "walking", "stairs", "stair", "ladder", "climbing", "climb"]):
+        print("mapped to locomotion")
+        return "locomotion"
+
+    if contains_any(label, ["push", "pull", "drag", "carry", "lift", "lifting"]):
+        print("mapped to handling")
+        return "material_handling"
+
+    if contains_any(label, [
+        "lean", "leaning", "forward_lean", "sideways_lean",
+        "backward_lean", "torso", "twist", "trunk", "squat", "bend", "bending"
+    ]):
+        print("mapped to trunk movement")
+        return "trunk_movement"
+
+    if contains_any(label, [
+        "hand", "hands", "arm", "arms", "shoulder", 
+        "reach", "reaching"
+    ]):
+        print("mapped to arm movement")
+        return "arm_movement"
+
+    if contains_any(label, ["standing", "sitting", "neutral", "idle", "resting"]):
+        print("mapped to neutral")
+        return "neutral"
+    print("FALLBACK to other")
+    return "other"
+
+
+def map_taxonomy_candidate_2(label, static_label=None):
+
+    if contains_any(label, ["lying"]):
+        return "other"
+
+    if contains_any(label, ["walk", "walking", "stairs", "stair", "ladder", "climb", "climbing"]):
+        return "locomotion"
+
+    if contains_any(label, [
+        "push", "pull", "drag", "carry", "lift", "lifting",
+        "load", "squat", "kneel", "crouch", "bend", "bending"
+    ]):
+        return "handling_or_lower_body_movement"
+
+    if contains_any(label, [
+        "hand", "hands", "arm", "arms", "shoulder", "elbow",
+        "reach", "reaching", "overhead",
+        "lean", "leaning", "torso", "twist", "trunk"
+    ]):
+        return "upper_body_movement"
+
+    if contains_any(label, ["standing", "sitting", "neutral", "idle", "resting"]):
+        return "neutral"
+
+    return "other"
+
+
+def map_taxonomy_candidate_3(label, static_label=None):
+
+    if contains_any(label, ["lying"]):
+        return "other"
+
+    locomotion_handling_keywords = [
+        "walk", "walking",
+        "stairs", "stair",
+        "climb", "climbing",
+        "push", "pull", "drag",
+        "carry", "carrying",
+    ]
+
+    full_body_engagement_keywords = [
+        "squat", "squatting",
+        "lift", "lifting",
+        "lean", "leaning",
+        "forward_lean",
+        "sideways_lean",
+        "backward_lean",
+        "torso",
+        "twist", "twisting",
+        "trunk",
+        "awkward",
+    ]
+
+    arm_engagement_keywords = [
+        "hand", "hands",
+        "arm", "arms",
+        "shoulder",
+        "elbow",
+        "reach", "reaching",
+        "overhead",
+    ]
+
+    neutral_keywords = [
+        "standing",
+        "sitting",
+        "neutral",
+        "neutral_load",
+        "idle",
+        "resting",
+        "rest",
+    ]
+
+    # Priority matters
+    if contains_any(label, locomotion_handling_keywords):
+        return "locomotion_handling"
+
+    if contains_any(label, full_body_engagement_keywords):
+        return "full_body_engagement"
+
+    if contains_any(label, arm_engagement_keywords):
+        return "arm_engagement"
+
+    if contains_any(label, neutral_keywords):
+        return "neutral"
+
+    return "other"
+
+
+def map_taxonomy_candidate_4(label, static_label=None):
     """
-    Experimental finer-grained taxonomy.
-    Only maps semantic/task labels.
-    Does NOT infer static.
+    Candidate 4:
+    static / intermediate / locomotion
+
+    Uses original label + static_label.
+    static_label overrides the original movement label.
     """
-    if pd.isna(label):
-        return None
 
-    label = str(label).lower().strip()
-    label = re.sub(r"[\s\-]+", "_", label)
+    if contains_any(label, ["lying"]):
+        return "other"
 
-    def has(*terms):
-        return all(term in label for term in terms)
+    # label based on static label detection
+    if static_label == "static" or contains_any(label, ["static", "standing", "sitting", "idle", "resting", "neutral_load"]):
+        return "static"
 
-    def has_any(*terms):
-        return any(term in label for term in terms)
+    if contains_any(label, ["walk", "walking", "stairs", "stair", "climb", "ladder", "climbing"]):
+        return "locomotion"
 
-    # ---- break / equipment ----
-    if has_any(
-        "break",
-        "break_put_on_equipment",
-        "break_putting_on_equipment",
-        "remove_gear",
-    ):
-        return "break"
+    return "intermediate"
 
-    # ---- stairs / ladder ----
-    if has_any("stairs", "stair", "ladder"):
-        return "stairs_ladder"
+# old mapping schemes:
+# def map_label_hierarchical(label):
+#     if pd.isna(label):
+#         return None
 
-    # ---- walking / carrying ----
-    if has_any("walk", "walking", "carry"):
-        return "walk_carry"
+#     label = str(label).lower().strip()
+#     label = re.sub(r"[\s\-]+", "_", label)
 
-    # ---- standing ----
-    if has_any("standing", "stand", "break_stand"):
-        return "standing"
+#     def has(*terms):
+#         return all(term in label for term in terms)
 
-    # ---- kneeling ----
-    if "knee" in label or has_any("kneel", "kneeling"):
-        return "kneel"
+#     def has_any(*terms):
+#         return any(term in label for term in terms)
 
-    # ---- trunk flexion ----
-    if has_any("lean", "bend"):
-        return "trunk_flexion"
+#     if "break" in label:
+#         return "break"
 
-    # ---- arm movement ----
-    if has_any("arms_90", "arm_90", "arms_up", "arm_up"):
-        return "arm_movement"
+#     if "lying" in label:
+#         return "lying"
 
-    if "left_arm" in label:
-        return "arm_movement"
+#     if has("welding", "upright"):
+#         return "welding_upright"
 
-    if "right_arm" in label:
-        return "arm_movement"
+#     if has("welding") and has_any("lean", "left", "right", "twist"):
+#         return "welding_lean_twist"
 
-    if has("arm", "forward") or has_any("arms_forward", "forward_arm", "forward_arms"):
-        return "arm_movement"
+#     if has("welding", "arm"):
+#         return "welding_arms"
 
-    # ---- shoulder load ----
-    if has_any("shoulder_load", "shoulder"):
-        return "shoulder_load"
+#     if has("welding"):
+#         return "welding"
 
-    # ---- push / pull / drag ----
-    if has_any("push", "pull", "drag"):
-        return "push_pull_drag"
+#     if has_any("stairs", "stair", "ladder"):
+#         return "stairs_ladder"
 
-    # ---- twist ----
-    if "twist" in label:
-        return "twist"
+#     if has_any("walk", "walking"):
+#         return "walking"
 
-    # ---- vibration / tools ----
-    if has_any("drill", "grind", "vibration"):
-        return "vibration"
+#     if "carry" in label:
+#         return "carry"
 
-    # ---- low movement ----
-    if has_any("squat", "sit_squat", "crawl", "climb"):
-        return "low_movement"
+#     if has_any("pull", "drag", "push"):
+#         return "push_pull_drag"
 
-    # ---- lying ----
-    if "lying" in label:
-        return "lying"
+#     if has_any("neutral_load_left", "neutral_load_right"):
+#         return "neutral_load"
 
-    # ---- neutral load ----
-    if has_any("neutral_load_left", "neutral_load_right", "neutral_load"):
-        return "neutral_load"
+#     if "twist" in label:
+#         return "twist"
 
-    return label
+#     if has_any("lean_forward", "forward_lean", "bend_forward", "forward_bend"):
+#         return "forward_lean"
+
+#     if has_any("lean_left", "left_lean", "bend_left", "left_bend"):
+#         return "left_lean"
+
+#     if has_any("lean_right", "right_lean", "bend_right", "right_bend"):
+#         return "right_lean"
+
+#     if has_any("lean", "bend"):
+#         return "trunk_flexion_unspecified"
+
+#     if "left_arm" in label:
+#         return "left_arm"
+
+#     if has_any("right_arm", "shoulder_load"):
+#         return "right_arm"
+
+#     if re.search(r"\barms?\b", label):
+#         return "both_arms_movement"
+
+#     if has("arm", "forward"):
+#         return "arms_forward"
+
+#     if has("shoulder"):
+#         return "shoulder_load"
+
+#     if has_any("drill", "grind", "vibration"):
+#         return "vibration"
+
+#     if has_any("squat", "sit_squat", "crawl", "climb"):
+#         return "low_movement"
+
+#     return label
+
+# def map_label_coarse(hier, static_label):
+#     if hier is None:
+#         return None
+
+#     if static_label == "static":
+#         return "static"
+
+#     if hier in {"walking", "stairs_ladder"}:
+#         return "locomotion"
+
+#     return "intermediate"
+
+# def map_label_taxonomy_v1(label):
+#     """
+#     Experimental finer-grained taxonomy.
+#     Only maps semantic/task labels.
+#     Does NOT infer static.
+#     """
+#     if pd.isna(label):
+#         return None
+
+#     label = str(label).lower().strip()
+#     label = re.sub(r"[\s\-]+", "_", label)
+
+#     def has(*terms):
+#         return all(term in label for term in terms)
+
+#     def has_any(*terms):
+#         return any(term in label for term in terms)
+
+#     # ---- break / equipment ----
+#     if has_any(
+#         "break",
+#         "break_put_on_equipment",
+#         "break_putting_on_equipment",
+#         "remove_gear",
+#     ):
+#         return "break"
+
+#     # ---- stairs / ladder ----
+#     if has_any("stairs", "stair", "ladder"):
+#         return "stairs_ladder"
+
+#     # ---- walking / carrying ----
+#     if has_any("walk", "walking", "carry"):
+#         return "walk_carry"
+
+#     # ---- standing ----
+#     if has_any("standing", "stand", "break_stand"):
+#         return "standing"
+
+#     # ---- kneeling ----
+#     if "knee" in label or has_any("kneel", "kneeling"):
+#         return "kneel"
+
+#     # ---- trunk flexion ----
+#     if has_any("lean", "bend"):
+#         return "trunk_flexion"
+
+#     # ---- arm movement ----
+#     if has_any("arms_90", "arm_90", "arms_up", "arm_up"):
+#         return "arm_movement"
+
+#     if "left_arm" in label:
+#         return "arm_movement"
+
+#     if "right_arm" in label:
+#         return "arm_movement"
+
+#     if has("arm", "forward") or has_any("arms_forward", "forward_arm", "forward_arms"):
+#         return "arm_movement"
+
+#     # ---- shoulder load ----
+#     if has_any("shoulder_load", "shoulder"):
+#         return "shoulder_load"
+
+#     # ---- push / pull / drag ----
+#     if has_any("push", "pull", "drag"):
+#         return "push_pull_drag"
+
+#     # ---- twist ----
+#     if "twist" in label:
+#         return "twist"
+
+#     # ---- vibration / tools ----
+#     if has_any("drill", "grind", "vibration"):
+#         return "vibration"
+
+#     # ---- low movement ----
+#     if has_any("squat", "sit_squat", "crawl", "climb"):
+#         return "low_movement"
+
+#     # ---- lying ----
+#     if "lying" in label:
+#         return "lying"
+
+#     # ---- neutral load ----
+#     if has_any("neutral_load_left", "neutral_load_right", "neutral_load"):
+#         return "neutral_load"
+
+#     return label
+
+
+# # def map_label_taxonomy_posture_focus(label):
+# #     if pd.isna(label):
+# #         return None
+
+# #     label = str(label).lower().strip()
+# #     label = re.sub(r"[\s\-]+", "_", label)
+
+# #     def has_any(*terms):
+# #         return any(term in label for term in terms)
+
+# #     # static posture semantics
+# #     if has_any("lean", "flex", "bend", "trunk_flexion", "lean_forward", "forward_lean", "sideways_lean"):
+# #         return "trunk_flexion"
+
+# #     if has_any("neutral_load", "standing", "stand", "sitting", "sit", "upright"):
+# #         return "neutral"
+
+# #     # dynamic locomotion
+# #     if has_any("walk", "walking", "stairs", "stair", "ladder"):
+# #         return "locomotion"
+
+# #     # dynamic arm-dominant
+# #     if has_any(
+# #         "left_arm", "right_arm", "arms_forward", "arms_up", "arms_90",
+# #         "arm", "shoulder_load", "shoulder"
+# #     ):
+# #         return "arm_movement"
+
+# #     # dynamic handling
+# #     if has_any("carry", "push", "pull", "drag"):
+# #         return "load_handling"
+
+# #     if has_any("twist", "vibration", "drill", "grind", "kneel", "crawl", "squat", "climb"):
+# #         return "other_dynamic"
+
+# #     if has_any("break", "remove_gear", "break_put_on_equipment", "break_putting_on_equipment"):
+# #         return "break"
+
+# #     return "other_dynamic"
 
 
 # def map_label_taxonomy_posture_focus(label):
 #     if pd.isna(label):
 #         return None
+
+#     if label == "lying_arms_up":
+#         return label
 
 #     label = str(label).lower().strip()
 #     label = re.sub(r"[\s\-]+", "_", label)
@@ -231,133 +425,89 @@ def map_label_taxonomy_v1(label):
 #     def has_any(*terms):
 #         return any(term in label for term in terms)
 
-#     # static posture semantics
-#     if has_any("lean", "flex", "bend", "trunk_flexion", "lean_forward", "forward_lean", "sideways_lean"):
-#         return "trunk_flexion"
+#     # ---- trunk posture / flexion semantics ----
+#     if has_any("arm_up", "arms_up", "shoulder_load"):
+#         return("arm_elevation")
 
-#     if has_any("neutral_load", "standing", "stand", "sitting", "sit", "upright"):
-#         return "neutral"
-
-#     # dynamic locomotion
-#     if has_any("walk", "walking", "stairs", "stair", "ladder"):
-#         return "locomotion"
-
-#     # dynamic arm-dominant
 #     if has_any(
-#         "left_arm", "right_arm", "arms_forward", "arms_up", "arms_90",
-#         "arm", "shoulder_load", "shoulder"
+#         "lean", "flex", "bend", "trunk_flexion",
+#         "lean_forward", "forward_lean", "sideways_lean", "twist", "grinding_forward"
 #     ):
-#         return "arm_movement"
+#         return "trunk_engaged"
 
-#     # dynamic handling
-#     if has_any("carry", "push", "pull", "drag"):
-#         return "load_handling"
+#     # ---- neutral / upright posture semantics ----
+#     if has_any(
+#         "standing", "stand", "sitting", "sit",
+#         "upright", "neutral_load"
+#     ):
+#         return "trunk_neutral"
 
-#     if has_any("twist", "vibration", "drill", "grind", "kneel", "crawl", "squat", "climb"):
-#         return "other_dynamic"
-
-#     if has_any("break", "remove_gear", "break_put_on_equipment", "break_putting_on_equipment"):
-#         return "break"
-
-#     return "other_dynamic"
-
-
-def map_label_taxonomy_posture_focus(label):
-    if pd.isna(label):
-        return None
-
-    if label == "lying_arms_up":
-        return label
-
-    label = str(label).lower().strip()
-    label = re.sub(r"[\s\-]+", "_", label)
-
-    def has_any(*terms):
-        return any(term in label for term in terms)
-
-    # ---- trunk posture / flexion semantics ----
-    if has_any("arm_up", "arms_up", "shoulder_load"):
-        return("arm_elevation")
-
-    if has_any(
-        "lean", "flex", "bend", "trunk_flexion",
-        "lean_forward", "forward_lean", "sideways_lean", "twist", "grinding_forward"
-    ):
-        return "trunk_engaged"
-
-    # ---- neutral / upright posture semantics ----
-    if has_any(
-        "standing", "stand", "sitting", "sit",
-        "upright", "neutral_load"
-    ):
-        return "trunk_neutral"
-
-    # ---- locomotion ----
+#     # ---- locomotion ----
     
-    if has_any( "push", "pull", "drag", "carry", "squat"):
-        return "handling"
-    if has_any("walk", "walking"):
-        return "walking"
-    if has_any("stairs", "stair", "ladder"):
-        return "stairs_ladder"
-    if has_any("climb"):
-        return "climbing"
+#     if has_any( "push", "pull", "drag", "carry", "squat"):
+#         return "handling"
+#     if has_any("walk", "walking"):
+#         return "walking"
+#     if has_any("stairs", "stair", "ladder"):
+#         return "stairs_ladder"
+#     if has_any("climb"):
+#         return "climbing"
 
-    if has_any(
-        "left_arm", "right_arm",
-        "arms_forward", "arms_90",
-        "arm", "shoulder",
-    ):
-        return "arm_motion"
+#     if has_any(
+#         "left_arm", "right_arm",
+#         "arms_forward", "arms_90",
+#         "arm", "shoulder",
+#     ):
+#         return "arm_motion"
 
-    if has_any(
-        "break",
-        "remove_gear",
-        "break_put_on_equipment",
-        "break_putting_on_equipment"
-    ):
-        return "break"
-    if has_any("crawl", "kneel", "knee"):
-        return "drop"
+#     if has_any(
+#         "break",
+#         "remove_gear",
+#         "break_put_on_equipment",
+#         "break_putting_on_equipment"
+#     ):
+#         return "break"
+#     if has_any("crawl", "kneel", "knee"):
+#         return "drop"
 
-    return label
-
-def map_label_coarse_posture_focus(mapped_label, static_label):
-    if mapped_label is None:
-        return None
-
-    if static_label == "static":
-        if "trunk_neutral" in mapped_label:
-            return "upper_body_neutral_static"
-        elif "trunk" in mapped_label:
-            return "upper_body_static"
-        elif "lying_arms_up" in mapped_label:
-            return "lying_arms_up"
-        elif "arm" in mapped_label:
-            return "upper_body_static"
-    else:
-        if "trunk_neutral" in mapped_label:
-            return "upper_body_neutral_motion"
-        elif "trunk" in mapped_label:
-            return "upper_body_motion"
-        elif "lying_arms_up" in mapped_label:
-            return "lying_arms_up"
-        elif "arm" in mapped_label:
-            return "upper_body_motion"
-
-    return mapped_label
-
+#     return label
 
 # def map_label_coarse_posture_focus(mapped_label, static_label):
 #     if mapped_label is None:
 #         return None
 
 #     if static_label == "static":
-#         return "static"
+#         if "trunk_neutral" in mapped_label:
+#             return "upper_body_neutral_static"
+#         elif "trunk" in mapped_label:
+#             return "upper_body_static"
+#         elif "lying_arms_up" in mapped_label:
+#             return "lying_arms_up"
+#         elif "arm" in mapped_label:
+#             return "upper_body_static"
 #     else:
-#         if mapped_label == "walking" or mapped_label == "stairs_ladder" or mapped_label == "handling":
-#             return "locomotion"
-#         else:
-#             return "intermediate"
+#         if "trunk_neutral" in mapped_label:
+#             return "upper_body_neutral_motion"
+#         elif "trunk" in mapped_label:
+#             return "upper_body_motion"
+#         elif "lying_arms_up" in mapped_label:
+#             return "lying_arms_up"
+#         elif "arm" in mapped_label:
+#             return "upper_body_motion"
 
 #     return mapped_label
+
+
+# # def map_label_coarse_posture_focus(mapped_label, static_label):
+# #     if mapped_label is None:
+# #         return None
+
+# #     if static_label == "static":
+# #         return "static"
+# #     else:
+# #         if mapped_label == "walking" or mapped_label == "stairs_ladder" or mapped_label == "handling":
+# #             return "locomotion"
+# #         else:
+# #             return "intermediate"
+
+# #     return mapped_label

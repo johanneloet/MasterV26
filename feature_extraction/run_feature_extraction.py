@@ -68,12 +68,12 @@ def run_feature_extraction(
         print(
             "WARNING Data file [right arm, lower back, left sole or right sole] is not provided."
         )
-        answer = input("Was this intentional? (y/n): ").strip().lower()
-        if answer == "n":
-            print("Stopping...")
-            return
-        else:
-            print("Continuing...")
+        # answer = input("Was this intentional? (y/n): ").strip().lower()
+        # if answer == "n":
+        #     print("Stopping...")
+        #     return
+        # else:
+        #     print("Continuing...")
     # SEPARATE BY MODES
     if mode == 'Repetition':
         if right_arm_df is not None:
@@ -178,10 +178,9 @@ def run_feature_extraction(
                 target_fs=target_resampling_rate,
             )
         else:
-            feat_muse_rarm, window_labels_rarm, window_labels_rarm = None, None, None
+            feat_muse_rarm, window_labels_rarm, window_static_labels_rarm = None, None, None
 
             # Left Arm
-       
         if left_arm_df is not None:
             feat_muse_larm, window_labels_larm, window_static_labels_larm = ExtractIMU_features_window_based(
                 imu_data=left_arm_df,
@@ -307,7 +306,7 @@ def run_feature_extraction(
         "left_arm": window_static_labels_larm,
         "lower_back": window_static_labels_lback,
         "upper_back": window_static_labels_uback,
-         "left_fsr": None,
+        "left_fsr": None,
         "right_fsr": None
     }
     # Filter out missing sensors
@@ -454,11 +453,34 @@ def run_feature_extraction_for_multiple_tests(
             feat_dir = get_one_foler_path(test_id)
             print(f"Directory to save features: {feat_dir}")
 
-            if mode == "Repetition":
-                for df in [df_rarm, df_larm, df_lback, df_uback, df_lfsr, df_rfsr]:
-                    if df is not None and "rep_id" in df.columns:
-                        df.dropna(subset=["rep_id"], inplace=True)
+            continuous_labels = [
+            "walking",
+            "standing",
+            "sitting",
+            "neutral_load",
+            "neutral_load_left",
+            "neutral_load_right",
+            ]
 
+            dfs = [df_rarm, df_larm, df_lback, df_uback, df_lfsr, df_rfsr]
+
+            if mode == "Repetition":
+                filtered_dfs = []
+
+                for df in dfs:
+                    if df is not None and "rep_id" in df.columns:
+                        df["label"] = df["label"].astype("string")
+
+                        keep_mask = (
+                            df["rep_id"].notna()
+                            | df["label"].isin(continuous_labels)
+                        )
+
+                        df = df.loc[keep_mask].copy()
+
+                    filtered_dfs.append(df)
+
+                df_rarm, df_larm, df_lback, df_uback, df_lfsr, df_rfsr = filtered_dfs
             all_features = run_feature_extraction(
                 output_dir=feat_dir,
                 test_id=test_id,
@@ -494,28 +516,51 @@ def run_feature_extraction_for_multiple_tests(
     return True
 
 if __name__ == "__main__":
-    # Optionally define which test ids to run feature extraction for
+    # Define which test ids to run feature extraction for
     run = [
         # 'prelim_1',
         # 'prelim_2',
         # 'prelim_3',
         # 'prelim_4',
         # 'prelim_5',
-        'prelim_6',
+        # 'prelim_6',
+       # 'prelim_7',
+        # 'prelim_8',
         # 'aksoprotocol_1',
         # 'aksoprotocol_2',
         # 'aksoprotocol_3',
         # 'aksoprotocol_4',
+        #'aksoprotocol_5',
         # 'aksowork_1',
         # 'aksowork_2',
         # 'aksowork_3',
         # 'aksowork_4',
         # 'aksowork_5'
+        # 'test_1',
+        # 'test_2',
+        # 'test_3',
+        # 'test_4',
+        # 'test_5',
+        # 'test_6',
+        #'test_7',
+        # 'test_8',
+        'test_9',
+        # 'test_10',
+        # 'test_11',
+        # 'test_12',
+        # 'test_13',
+        #'test_14',
+        # 'test_15',
+        # 'test_16',
+        # 'test_17',
+        # 'test_18',
+        # 'test_19',
+        # 'test_20'
     ]
 
     #### Define scenarios to be used in feature extraction ####
     # scenario with all available sensors
-    scenario_6 = [
+    scenario_SC1 = [
         "right_arm",
         "left_arm",
         "lower_back",
@@ -524,38 +569,95 @@ if __name__ == "__main__":
         "right_fsr",
     ]
     # scenario with only 4 sensors (the old setup)
-    scenario_4 = ["right_arm", "lower_back", "left_fsr", "right_fsr"]
-
-    scenario_no_soles = [
+    scenario_SC2 = ["right_arm", "lower_back", "left_fsr", "right_fsr"]
+    
+    # bilateral arms and insoles
+    scenario_SC3 = [
+        "right_arm",
+        "left_arm",
+        "left_fsr",
+        "right_fsr"
+    ]
+    
+    # right (dominant?) arm and insoles
+    scenario_SC4 = [
+        "right_arm",
+        "left_fsr",
+        "right_fsr"
+    ]
+    
+    # left arm and insoles
+    scenario_SC5 = [
+        "left_arm",
+        "left_fsr",
+        "right_fsr"
+    ]
+    
+    # only IMU, new setup
+    scenario_SC6 = [
         "right_arm",
         "left_arm",
         "lower_back",
-        "upper_back",]
+        "upper_back",
+    ]
     
-    scenario_arms_only = [
+    # only IMU, legacy setup
+    scenario_SC7 = [
         "right_arm",
-        "left_arm",
+        "lower_back",
+    ]
+    
+    # update this according to which files to run. some files (legacy) do not allow running certain scenarios...
+    scenarios = [
+        #scenario_SC1,
+        scenario_SC2,
+        # scenario_SC3,
+        # scenario_SC4,
+        # scenario_SC5,
+        # scenario_SC6,
+        # scenario_SC7
     ]
 
     # Define settings
     mode = "Repetition"              # "window" or "repetition"
     expanded_fsr = True
     imu_sampling_rate = 100 # original sampling rate of the files in this run
-    resample_signal = False  # set True if these files need IMU resampling
+    resample_signal = False  # set True if these files need IMU resampling (OLD-RESAMPLING WAS DONE AT THE PREPROCESSING LEVEL IN THE FINAL VERSION!)
     target_fs = 100              # target IMU fs after resampling
     window_sec = 3.5
     use_rep_id = True # if False, use consecutive label runs instead
 
     # Run with selected settings!
     # NB IMU sampling rates must be consistent across all participants. Run different sampling rates in separate runs!
-    run_feature_extraction_for_multiple_tests(
-        scenario=scenario_6,
-        expanded_fsr=expanded_fsr,
-        test_ids=run,
-        stop_if_one_fails=True,
-        IMU_sampling_rate=imu_sampling_rate,
-        mode=mode,
-        resample_signal=resample_signal,
-        target_fs=target_fs,
-        window_sec=window_sec,
-        use_rep_id=use_rep_id,)
+    
+    # RUN A SINGLE SCENARIO
+    # run_feature_extraction_for_multiple_tests(
+    #     scenario=scenario_SC1,
+    #     expanded_fsr=expanded_fsr,
+    #     test_ids=run,
+    #     stop_if_one_fails=True,
+    #     IMU_sampling_rate=imu_sampling_rate,
+    #     mode=mode,
+    #     resample_signal=resample_signal,
+    #     target_fs=target_fs,
+    #     window_sec=window_sec,
+    #     use_rep_id=use_rep_id,)
+    
+    # RUN ALL SCENARIOS
+    # runs all scenarios with fixed settings. remember to set correct segmentation mode and window length for 
+    # each run
+    for s in scenarios:
+        run_feature_extraction_for_multiple_tests(
+                                            scenario=s,
+                                            expanded_fsr=expanded_fsr,
+                                            test_ids=run,
+                                            stop_if_one_fails=True,
+                                            IMU_sampling_rate=imu_sampling_rate,
+                                            mode=mode,
+                                            resample_signal=resample_signal,
+                                            target_fs=target_fs,
+                                            window_sec=window_sec,
+                                            use_rep_id=use_rep_id,
+                                            )
+                                        
+    

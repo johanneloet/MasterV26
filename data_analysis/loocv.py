@@ -201,13 +201,42 @@ from pathlib import Path
 #     plt.close()
 
 #     return all_accuracies
-from utils import map_label_hierarchical, map_label_coarse, map_label_taxonomy_v1, map_label_taxonomy_posture_focus, map_label_coarse_posture_focus
+from utils import map_taxonomy_candidate_1, map_taxonomy_candidate_2, map_taxonomy_candidate_3, map_taxonomy_candidate_4
+
+
+
+def select_sensor_columns(df, sensor_config):
+    metadata_cols = [
+        c for c in ["label", "label_used", "static_label"]
+        if c in df.columns
+    ]
+
+    sensor_prefixes = {
+        "right_arm": "R_Arm",
+        "left_arm": "L_Arm",
+        "lower_back": "Lower_Back",
+        "upper_back": "Upper_Back",
+        "left_fsr": "Left",
+        "right_fsr": "Right",
+    }
+
+    selected_feature_cols = []
+
+    for sensor in sensor_config:
+        prefix = sensor_prefixes[sensor]
+        selected_feature_cols.extend(
+            [c for c in df.columns if c.endswith(prefix)]
+        )
+
+    keep_cols = metadata_cols + selected_feature_cols
+
+    return df[keep_cols].copy()
 
 def run_loocv_with_pca(
     clf_name: str = "SVC",
     label_mapping: dict | None = None,
     class_version: int = 1,
-    prefixes: list[str] = ["prelim", "aksowork", "aksoprotocol"],
+    prefixes: list[str] = ["test","prelim", "aksowork", "aksoprotocol"],
     right_arm: bool = True,
     left_arm: bool = False,
     lower_back: bool = True,
@@ -216,7 +245,8 @@ def run_loocv_with_pca(
     right_fsr: bool = True,
     expanded_fsr: bool = False,
     taxonomy_fn=None,
-    label_override_fn=None,
+    seg_strategy="Window3.5",
+    save_per_participant_metrics: bool = False,
 ):
     test_folder_dict = get_test_folder_paths()
 
@@ -242,11 +272,39 @@ def run_loocv_with_pca(
     sensor_combo_scenario = "_".join(sensor_config)
 
     feature_files = {}
+    seg_mode = "Window"
+    if "Repetition" in seg_strategy:
+        seg_mode = "Repetition"
 
     for test_id, folder_path in test_folder_dict.items():
+        current_seg_mode = seg_mode
+        current_seg_strategy = seg_strategy
+        
+        if "test" in test_id:
+            full_sensor_config = [
+                "right_arm",
+                "lower_back",
+                "left_fsr",
+                "right_fsr",
+            ]
+        else:
+            full_sensor_config = [
+                "right_arm",
+                "left_arm",
+                "lower_back",
+                "upper_back",
+                "left_fsr",
+                "right_fsr",
+            ]
+        
+        full_sensor_combo_scenario = "_".join(full_sensor_config)
+
+        if "aksowork" in test_id and "Repetition" in current_seg_strategy:
+            current_seg_mode = "Window"
+            current_seg_strategy = "Window3.5"  # quickfix
         if test_id.split("_")[0] in prefixes:
             filename = (
-                f"Features_Window_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+                f"Features_{current_seg_mode}_{test_id}_expanded{expanded_fsr}_SEG{current_seg_strategy}_{full_sensor_combo_scenario}.csv"
             )
             feature_files[test_id] = Path(folder_path) / filename
 
@@ -258,19 +316,21 @@ def run_loocv_with_pca(
     all_recall = []
     all_Y_true = []
     all_Y_pred = []
+    
+    all_participant_metrics = []
 
     start = time.time()
 
     for leave_out in test_ids:
-        if "prelim" in leave_out or "aksoprotocol" in leave_out:
-            continue # dont test on protocol files.
+        # if "prelim" in leave_out or "aksoprotocol" in leave_out or "test" in leave_out:
+        #     continue # dont test on protocol files.
         print(f"\nTesting on {leave_out}...")
         leave_out_tests = [leave_out]
         if leave_out.split('_')[0] == 'aksoprotocol':
-            leave_out_tests.append(f'aksowork_{leave_out.split('_')[1]}')
+            leave_out_tests.append(f'aksowork_{leave_out.split("_")[1]}')
             print("Leaving out", leave_out_tests)
         elif leave_out.split('_')[0] == 'aksowork':
-            leave_out_tests.append(f'aksoprotocol_{leave_out.split('_')[1]}')
+            leave_out_tests.append(f'aksoprotocol_{leave_out.split("_")[1]}')
             print("Leaving out", leave_out_tests)
         # Split train/test
         train_dfs = [
@@ -279,6 +339,18 @@ def run_loocv_with_pca(
             if test_id not in leave_out_tests
         ]
         test_df = pd.read_csv(feature_files[leave_out])
+        
+        # SELECT RELEVANT FEATURE COMBOS HERE!!
+        train_dfs = [
+            select_sensor_columns(pd.read_csv(path), sensor_config)
+            for test_id, path in feature_files.items()
+            if test_id not in leave_out_tests
+        ]
+
+        test_df = select_sensor_columns(
+            pd.read_csv(feature_files[leave_out]),
+            sensor_config
+        )
 
         train_df = pd.concat(train_dfs, ignore_index=True)
 
@@ -300,25 +372,34 @@ def run_loocv_with_pca(
         test_df["label_used"] = test_df["label"]
 
         if taxonomy_fn is not None:
-            train_df["label_used"] = train_df["label"].apply(taxonomy_fn)
-            test_df["label_used"] = test_df["label"].apply(taxonomy_fn)
-
-        if label_override_fn is not None:
             train_df["label_used"] = train_df.apply(
-                lambda row: label_override_fn(row["label_used"], row["static_label"]),
+                lambda row: taxonomy_fn(row["label"], row.get("static_label", None)),
                 axis=1
             )
+
             test_df["label_used"] = test_df.apply(
-                lambda row: label_override_fn(row["label_used"], row["static_label"]),
+                lambda row: taxonomy_fn(row["label"], row.get("static_label", None)),
                 axis=1
             )
+
+        # if label_override_fn is not None:
+        #     train_df["label_used"] = train_df.apply(
+        #         lambda row: label_override_fn(row["label_used"], row["static_label"]),
+        #         axis=1
+        #     )
+        #     test_df["label_used"] = test_df.apply(
+        #         lambda row: label_override_fn(row["label_used"], row["static_label"]),
+        #         axis=1
+        #     )
 
         train_df = train_df[train_df["label_used"].notna()].copy()
         test_df = test_df[test_df["label_used"].notna()].copy()
 
         # drop unusual labels
-        train_df = train_df[train_df["label_used"] != "drop"].copy()
-        test_df = test_df[test_df["label_used"] != "drop"].copy()
+        train_df = train_df[train_df["label_used"] != "other"].copy()
+        test_df = test_df[test_df["label_used"] != "other"].copy()
+        
+        
 
         # # drop break
         # train_df = train_df[train_df["label_used"] != "break"].copy()
@@ -334,6 +415,8 @@ def run_loocv_with_pca(
             columns=["label", "label_used", "static_label"],
             errors="ignore"
         )
+        
+        #print("X_train columns:", X_train.columns.tolist())
 
         # Use only test labels seen in training
         test_df = test_df[test_df["label_used"].isin(Y_train.unique())].copy()
@@ -343,10 +426,8 @@ def run_loocv_with_pca(
             columns=["label", "label_used", "static_label"],
             errors="ignore"
         )
-
         
-
-         # -------------------------
+        # -------------------------
         # Sanity checks
         # -------------------------
         assert len(X_train) == len(Y_train), f"Train mismatch: {len(X_train)} vs {len(Y_train)}"
@@ -359,7 +440,6 @@ def run_loocv_with_pca(
         #     labels = Y_train.unique()
         # else:
         #     labels = Y_train.unique()
-       
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
@@ -403,6 +483,15 @@ def run_loocv_with_pca(
         f1 = test_results[2]
         precision = test_results[3]
         recall = test_results[4]
+        
+        if save_per_participant_metrics:
+            all_participant_metrics.append({
+                "participant": leave_out,
+                "accuracy": accuracy,
+                "f1": f1,
+                "precision": precision,
+                "recall": recall,
+            })
 
         all_accuracies.append(accuracy)
         all_f1.append(f1)
@@ -441,16 +530,112 @@ def run_loocv_with_pca(
         color_code={},
     )
 
-    return all_accuracies
+    #return all_accuracies
+    
+    summary = {
+    "mean_accuracy": np.mean(all_accuracies),
+    "std_accuracy": np.std(all_accuracies, ddof=1),
+    "mean_f1": np.mean(all_f1),
+    "std_f1": np.std(all_f1, ddof=1),
+    "mean_precision": np.mean(all_precision),
+    "std_precision": np.std(all_precision, ddof=1),
+    "mean_recall": np.mean(all_recall),
+    "std_recall": np.std(all_recall, ddof=1),
+}
+
+    if save_per_participant_metrics:
+        summary["participant_metrics"] = all_participant_metrics
+
+    return summary
 
 
+# if __name__ == "__main__":
+#     run_loocv_with_pca(
+#         prefixes=["test", "aksowork", "prelim", "aksoprotocol"],
+#         left_arm=False,
+#         upper_back=False,
+#         clf_name="NN",
+#         expanded_fsr=True,
+#         taxonomy_fn=map_taxonomy_candidate_4,
+#         label_override_fn=None
+#     )
+
+
+# NEW MAIN FUNCTION FOR SCENARIO ANALYSIS
 if __name__ == "__main__":
-    run_loocv_with_pca(
-        prefixes=["aksowork", "prelim", "aksoprotocol"],
-        left_arm=True,
-        upper_back=True,
-        clf_name="NN",
-        expanded_fsr=True,
-        taxonomy_fn=map_label_taxonomy_posture_focus,
-        label_override_fn=map_label_coarse_posture_focus
-    )
+    dataset_scenarios = {
+    #"DC1": ["test"],                         # Legacy
+    #"DC2": ["aksoprotocol", "prelim"],                   # Protocol
+     "DC3": ["aksowork"],                       # Real-world
+    # "DC4": ["aksoprotocol", "aksowork", "prelim"],
+    # "DC5": ["prelim", "aksoprotocol", "test"],
+    # "DC6": ["test", "aksowork"],
+    # "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
+}
+    
+    results = []
+
+    for DC_id, DC in dataset_scenarios.items():
+        if DC_id == "DC3":
+            seg_scenarios = [#"Window2.5", 
+                            "Window3.5", 
+                            #"Window5"
+                             ]
+        else:
+            seg_scenarios = [
+                #"Window2.5", "Window3.5", "Window5", 
+                             "Repetition3.5"]
+        
+        # Evaluate protocol only datasets with their original labels in addition to the 
+        if DC_id in ["DC1", "DC2", "DC5"]:
+            taxonomys = {
+                        # "T1":map_taxonomy_candidate_4,
+                        #  "T2":map_taxonomy_candidate_3,
+                         "T3":None}
+        else:
+            # otherwsie use T2 as max granularity
+            taxonomys = {"T1":map_taxonomy_candidate_4,
+                         #"T2":map_taxonomy_candidate_3,
+                         }
+        
+        # configure such that the fullest available sensor combination scenario is used
+        if "test" in DC:
+            left_arm = False
+            upper_back = False
+        else:
+            left_arm=True
+            upper_back=True
+        
+        for seg in seg_scenarios:
+            for clf in [
+                "NN", 
+                #"SVC"
+                        ]:
+                for taxonomy_id, tax_fn in taxonomys.items():
+                    summary = run_loocv_with_pca(
+                        prefixes=DC,
+                        left_arm=left_arm,
+                        upper_back=upper_back,
+                        clf_name=clf,
+                        expanded_fsr=True,
+                        taxonomy_fn=tax_fn,
+                        seg_strategy=seg
+                    )
+
+                    summary.update({
+                        "dataset_scenario": DC_id,
+                        "prefixes": "+".join(DC),
+                        "taxonomy": taxonomy_id,
+                        "segmentation": seg,
+                        "classifier": clf,
+                        "expanded_fsr": True,
+                        "sensor_scenario": "SC2",
+                    })
+
+                    results.append(summary)
+
+        results_df = pd.DataFrame(results)
+        os.makedirs("./results", exist_ok=True)
+        results_df.to_csv("./results/loocv_summary_results.csv", index=False)
+        print(results_df)
+            
