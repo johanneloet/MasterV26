@@ -15,8 +15,9 @@ from feature_extraction.get_paths import (
     get_feature_paths_for_multiple_spaces,
     get_test_folder_paths,
 )
-from data_analysis.run_SVC import run_SVC, run_SVC_with_feature_tuning
-from data_analysis.run_NN import run_NN, run_NN_with_feature_tuning
+from data_analysis.run_SVC import run_SVC
+from data_analysis.run_NN import run_NN
+from data_analysis.run_RFC import run_RFC
 import json
 from data_analysis.cf_matrix import make_confusion_matrix
 from pathlib import Path
@@ -38,7 +39,7 @@ def run_stratified_kfold_with_pca(
     taxonomy_fn=None,
     seg_strategy="Window3.5",
     n_splits: int = 5,
-    random_state: int = 42,
+    random_state: int = 343, #always use 343 (this is what has been set in the classification model files so be consistent!)
 ):
     test_folder_dict = get_test_folder_paths()
 
@@ -86,13 +87,18 @@ def run_stratified_kfold_with_pca(
 
         df = df.drop(columns=[c for c in df.columns if "Unnamed" in c], errors="ignore")
 
-        print(len(df.columns))
-        df["source_test_id"] = test_id
-        
-        print(df["label"])
-        print("TEST ID", test_id)
+        # map such that neutral_load left/right -> just neutral_load for simplicity
+        df["label"] = df["label"].replace({
+            "neutral_load_left": "neutral_load",
+            "neutral_load_right": "neutral_load"
+        })
+        # old debug stuff
+        # print(len(df.columns))
+        # df["source_test_id"] = test_id
+        # print(df["label"])
+        # print("TEST ID", test_id)
         if taxonomy_fn is not None:
-             df['label'] = df.apply(
+            df['label'] = df.apply(
             lambda row: taxonomy_fn(row["label"], row.get("static_label", None)),
             axis=1
             )
@@ -153,7 +159,7 @@ def run_stratified_kfold_with_pca(
         fold_labels = sorted(Y_train.unique())
 
         if clf_name == "SVC":
-            test_results, train_results = run_SVC(
+            test_results, train_results, *_ = run_SVC(
                 X_train_pca,
                 Y_train,
                 X_test_pca,
@@ -165,6 +171,16 @@ def run_stratified_kfold_with_pca(
 
         elif clf_name == "NN":
             test_results, train_results, *_ = run_NN(
+                X_train_pca,
+                Y_train,
+                X_test_pca,
+                Y_test,
+                class_names=fold_labels,
+                CV_suffix=CV_suffix,
+                opt=True,
+            )
+        elif clf_name == "RFC":
+            test_results, train_results, *_ = run_RFC(
                 X_train_pca,
                 Y_train,
                 X_test_pca,
@@ -216,8 +232,8 @@ def run_stratified_kfold_with_pca(
     make_confusion_matrix(
         cf=cm,
         categories=labels,
-        title=f"{clf_name} Stratified {n_splits}-Fold Confusion Matrix",
-        savepath=f"./plots_use/{run_name}.pdf",
+        #title=f"{clf_name} Stratified {n_splits}-Fold Confusion Matrix",
+        savepath=f"./plots_use/{run_name}_AKSOWORK_USE_MATRIX.pdf",
         color_code={},
     )
 
@@ -236,13 +252,13 @@ def run_stratified_kfold_with_pca(
 
 if __name__ == "__main__":
     dataset_scenarios = {
-    "DC1": ["test"],                         # Legacy
-    "DC2": ["aksoprotocol", "prelim"],                   # Protocol
+   # "DC1": ["test"],                         # Legacy
+   # "DC2": ["aksoprotocol", "prelim"],                   # Protocol
     "DC3": ["aksowork"],                       # Real-world
-    "DC4": ["aksoprotocol", "aksowork", "prelim"],
-    "DC5": ["prelim", "aksoprotocol", "test"],
-    "DC6": ["test", "aksowork"],
-    "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
+   # "DC4": ["aksoprotocol", "aksowork", "prelim"],
+    #"DC5": ["prelim", "aksoprotocol", "test"],
+    #"DC6": ["test", "aksowork"],
+    #"DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
 }
     
     results = []
@@ -250,7 +266,7 @@ if __name__ == "__main__":
     for DC_id, DC in dataset_scenarios.items():
         if DC_id == "DC3":
             seg_scenarios = ["Window2.5", 
-                            "Window3.5", "Window5"
+                            #"Window3.5", "Window5"
                              ]
         else:
             seg_scenarios = [
@@ -278,7 +294,8 @@ if __name__ == "__main__":
         
         for seg in seg_scenarios:
             for clf in [
-                "NN", 
+                # "RFC",
+                # "NN", 
                 "SVC"
                         ]:
                 summary = run_stratified_kfold_with_pca(
@@ -306,7 +323,7 @@ if __name__ == "__main__":
 
     results_df = pd.DataFrame(results)
     os.makedirs("./results", exist_ok=True)
-    results_df.to_csv("./results/kfold_summary_results_NN_SVC_skip_prelim1.csv", index=False)
+    #results_df.to_csv("./results/kfold_summary_results_NN_SVC_skip_prelim1.csv", index=False)
     print(results_df)
             
             

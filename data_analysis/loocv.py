@@ -19,6 +19,7 @@ from feature_extraction.get_paths import (
 )
 from data_analysis.run_SVC import run_SVC, run_SVC_with_feature_tuning
 from data_analysis.run_NN import run_NN, run_NN_with_feature_tuning
+from data_analysis.run_RFC  import run_RFC
 import json
 from data_analysis.cf_matrix import make_confusion_matrix
 from pathlib import Path
@@ -475,6 +476,16 @@ def run_loocv_with_pca(
                 CV_suffix=CV_suffix,
                 opt=True,
             )
+        elif clf_name == "RFC":
+            test_results, train_results, *_ = run_RFC(
+                X_train_pca,
+                Y_train,
+                X_test_pca,
+                Y_test,
+                class_names=labels,
+                CV_suffix=CV_suffix,
+                opt=True,
+            )
         else:
             raise ValueError("Invalid classifier name.")
 
@@ -564,9 +575,9 @@ def run_loocv_with_pca(
 # NEW MAIN FUNCTION FOR SCENARIO ANALYSIS
 if __name__ == "__main__":
     dataset_scenarios = {
-    #"DC1": ["test"],                         # Legacy
-    #"DC2": ["aksoprotocol", "prelim"],                   # Protocol
-     "DC3": ["aksowork"],                       # Real-world
+    "DC1": ["test"],                         # Legacy
+    # "DC2": ["aksoprotocol", "prelim"],                   # Protocol
+    # "DC3": ["aksowork"],                       # Real-world
     # "DC4": ["aksoprotocol", "aksowork", "prelim"],
     # "DC5": ["prelim", "aksoprotocol", "test"],
     # "DC6": ["test", "aksowork"],
@@ -577,39 +588,42 @@ if __name__ == "__main__":
 
     for DC_id, DC in dataset_scenarios.items():
         if DC_id == "DC3":
-            seg_scenarios = [#"Window2.5", 
+            seg_scenarios = ["Window2.5", 
                             "Window3.5", 
-                            #"Window5"
+                            "Window5"
                              ]
         else:
             seg_scenarios = [
-                #"Window2.5", "Window3.5", "Window5", 
+                "Window2.5", "Window3.5", "Window5", 
                              "Repetition3.5"]
         
         # Evaluate protocol only datasets with their original labels in addition to the 
         if DC_id in ["DC1", "DC2", "DC5"]:
             taxonomys = {
-                        # "T1":map_taxonomy_candidate_4,
-                        #  "T2":map_taxonomy_candidate_3,
+                         "T1":map_taxonomy_candidate_4,
+                         "T2":map_taxonomy_candidate_3,
                          "T3":None}
         else:
             # otherwsie use T2 as max granularity
             taxonomys = {"T1":map_taxonomy_candidate_4,
-                         #"T2":map_taxonomy_candidate_3,
+                         "T2":map_taxonomy_candidate_3,
                          }
         
         # configure such that the fullest available sensor combination scenario is used
         if "test" in DC:
             left_arm = False
             upper_back = False
+            SC = "SC"
         else:
             left_arm=True
             upper_back=True
+            SC = "SC1"
         
         for seg in seg_scenarios:
             for clf in [
-                "NN", 
-                #"SVC"
+                #"NN", 
+                "SVC",
+                #"RFC"
                         ]:
                 for taxonomy_id, tax_fn in taxonomys.items():
                     summary = run_loocv_with_pca(
@@ -629,13 +643,13 @@ if __name__ == "__main__":
                         "segmentation": seg,
                         "classifier": clf,
                         "expanded_fsr": True,
-                        "sensor_scenario": "SC2",
+                        "sensor_scenario": SC,
                     })
 
                     results.append(summary)
 
-        results_df = pd.DataFrame(results)
-        os.makedirs("./results", exist_ok=True)
-        results_df.to_csv("./results/loocv_summary_results.csv", index=False)
-        print(results_df)
+                results_df = pd.DataFrame(results)
+                os.makedirs("./results", exist_ok=True)
+                results_df.to_csv(f"./results/{clf}_SEG{seg}_{DC_id}_loocv_summary_results_FINAL.csv", index=False)
+                print(results_df)
             
