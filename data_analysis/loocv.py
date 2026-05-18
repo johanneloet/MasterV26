@@ -382,6 +382,15 @@ def run_loocv_with_pca(
                 lambda row: taxonomy_fn(row["label"], row.get("static_label", None)),
                 axis=1
             )
+        else: 
+            train_df["label"] = train_df["label"].replace({
+            "neutral_load_left": "neutral_load",
+            "neutral_load_right": "neutral_load",
+            })
+            test_df["label"] = test_df["label"].replace({
+            "neutral_load_left": "neutral_load",
+            "neutral_load_right": "neutral_load",
+            })
 
         # if label_override_fn is not None:
         #     train_df["label_used"] = train_df.apply(
@@ -576,12 +585,12 @@ def run_loocv_with_pca(
 if __name__ == "__main__":
     dataset_scenarios = {
     "DC1": ["test"],                         # Legacy
-    # "DC2": ["aksoprotocol", "prelim"],                   # Protocol
-    # "DC3": ["aksowork"],                       # Real-world
-    # "DC4": ["aksoprotocol", "aksowork", "prelim"],
-    # "DC5": ["prelim", "aksoprotocol", "test"],
-    # "DC6": ["test", "aksowork"],
-    # "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
+    "DC2": ["aksoprotocol", "prelim"],                   # Protocol
+    "DC3": ["aksowork"],                       # Real-world
+    "DC4": ["aksoprotocol", "aksowork", "prelim"],
+    "DC5": ["prelim", "aksoprotocol", "test"],
+    "DC6": ["test", "aksowork"],
+    "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
 }
     
     results = []
@@ -621,9 +630,9 @@ if __name__ == "__main__":
         
         for seg in seg_scenarios:
             for clf in [
-                #"NN", 
+                "NN", 
                 "SVC",
-                #"RFC"
+                "RFC"
                         ]:
                 for taxonomy_id, tax_fn in taxonomys.items():
                     summary = run_loocv_with_pca(
@@ -650,6 +659,6 @@ if __name__ == "__main__":
 
                 results_df = pd.DataFrame(results)
                 os.makedirs("./results", exist_ok=True)
-                results_df.to_csv(f"./results/{clf}_SEG{seg}_{DC_id}_loocv_summary_results_FINAL.csv", index=False)
+                results_df.to_csv(f"./results/loocv_summary_results_FINAL.csv", index=False)
                 print(results_df)
             

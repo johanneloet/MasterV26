@@ -79,6 +79,14 @@ if __name__ == "__main__":
             "left_fsr" : True,
             "right_fsr" : True
         },
+        "SC9" : {
+            "right_arm" : False,
+            "left_arm" : False,
+            "lower_back" : False,
+            "upper_back" : False,
+            "left_fsr" : True,
+            "right_fsr" : True
+        },
     }
     
     classifiers = [
@@ -90,7 +98,7 @@ if __name__ == "__main__":
     optimal_tax_and_seg_dict = {
         "DC1" : {
             "T_opt" : None,
-            "seg_opt" : "Window3.5",
+            "seg_opt" : "Repetition3.5",
         },
         "DC2" : {
             "T_opt" : None,
@@ -98,11 +106,11 @@ if __name__ == "__main__":
         },
         "DC3" : {
             "T_opt" : map_taxonomy_candidate_4,
-            "seg_opt" : "Repetition2.5"
+            "seg_opt" : "Window3.5"
         },
         "DC4" : {
             "T_opt" : map_taxonomy_candidate_3,
-            "seg_opt" : "Window5"
+            "seg_opt" : "Repetition3.5"
         },
         "DC5" : {
             "T_opt" : map_taxonomy_candidate_3,
@@ -110,7 +118,7 @@ if __name__ == "__main__":
         },
         "DC6" : {
             "T_opt" : map_taxonomy_candidate_3,
-            "seg_opt" : "Window5"
+            "seg_opt" : "Repetition3.5"
         },
         "DC7" : {
             "T_opt" : map_taxonomy_candidate_3,

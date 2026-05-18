@@ -48,7 +48,7 @@ def plot_sensor_ablation_boxplots_by_dc(
 
     perf = build_sensor_ablation_participant_df(csv_path)
 
-    sensor_order = ["SC1", "SC2", "SC3", "SC4", "SC5", "SC6", "SC7", "SC8"]
+    sensor_order = ["SC1", "SC2", "SC3", "SC4", "SC5", "SC6", "SC7", "SC8", "SC9"]
     classifier_order = ["NN", "SVC"]
 
     mean_legend = mlines.Line2D(
@@ -212,7 +212,7 @@ def plot_sensor_ablation_summary_heatmaps(
     df = pd.read_csv(csv_path)
 
     dc_order = ["DC1", "DC2", "DC3", "DC4", "DC5", "DC6", "DC7"]
-    sc_order = ["SC1", "SC2", "SC3", "SC4", "SC5", "SC6", "SC7", "SC8"]
+    sc_order = ["SC1", "SC2", "SC3", "SC4", "SC5", "SC6", "SC7", "SC8", "SC9"]
 
     base_cmap = plt.cm.BuPu
     colors = base_cmap(np.linspace(0.0, 0.56, 256))
