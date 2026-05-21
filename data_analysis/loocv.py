@@ -383,11 +383,11 @@ def run_loocv_with_pca(
                 axis=1
             )
         else: 
-            train_df["label"] = train_df["label"].replace({
+            train_df["label_used"] = train_df["label"].replace({
             "neutral_load_left": "neutral_load",
             "neutral_load_right": "neutral_load",
             })
-            test_df["label"] = test_df["label"].replace({
+            test_df["label_used"] = test_df["label"].replace({
             "neutral_load_left": "neutral_load",
             "neutral_load_right": "neutral_load",
             })
@@ -409,6 +409,8 @@ def run_loocv_with_pca(
         train_df = train_df[train_df["label_used"] != "other"].copy()
         test_df = test_df[test_df["label_used"] != "other"].copy()
         
+        train_df = train_df[train_df["label_used"] != "neutral"].copy()
+        test_df = test_df[test_df["label_used"] != "neutral"].copy()
         
 
         # # drop break
@@ -528,11 +530,10 @@ def run_loocv_with_pca(
     end = time.time()
     print(f"\nDone! Total time: {end - start:.2f} sec")
 
-    print(f"\nMean Accuracy:  {np.mean(all_accuracies):.3f}")
-    print(f"Mean F1:        {np.mean(all_f1):.3f}")
-    print(f"Mean Precision: {np.mean(all_precision):.3f}")
-    print(f"Mean Recall:    {np.mean(all_recall):.3f}")
-
+    print(f"\nMean Accuracy:  {np.mean(all_accuracies):.3f} ± {np.std(all_accuracies):.3f}")
+    print(f"Mean F1:        {np.mean(all_f1):.3f} ± {np.std(all_f1):.3f}")
+    print(f"Mean Precision: {np.mean(all_precision):.3f} ± {np.std(all_precision):.3f}")
+    print(f"Mean Recall:    {np.mean(all_recall):.3f} ± {np.std(all_recall):.3f}")
     save_path = "./plots_use"
     os.makedirs(save_path, exist_ok=True)
 
@@ -545,9 +546,10 @@ def run_loocv_with_pca(
     make_confusion_matrix(
         cf=cm,
         categories=labels,
-        title=f"{clf_name} Confusion Matrix",
-        savepath=f"./plots_use/{run_name}.pdf",
+        #title=f"{clf_name} Confusion Matrix",
+        savepath=f"./plots_use/{run_name}_Aksowork_finer_tax_excl_neutral.pdf",
         color_code={},
+        fontsize=43
     )
 
     #return all_accuracies
@@ -569,96 +571,98 @@ def run_loocv_with_pca(
     return summary
 
 
-# if __name__ == "__main__":
-#     run_loocv_with_pca(
-#         prefixes=["test", "aksowork", "prelim", "aksoprotocol"],
-#         left_arm=False,
-#         upper_back=False,
-#         clf_name="NN",
-#         expanded_fsr=True,
-#         taxonomy_fn=map_taxonomy_candidate_4,
-#         label_override_fn=None
-#     )
+if __name__ == "__main__":
+    run_loocv_with_pca(
+        prefixes=["aksowork"],
+        right_arm=True,
+        left_arm=True,
+        upper_back=True,
+        lower_back=True,
+        clf_name="NN",
+        expanded_fsr=True,
+        taxonomy_fn=map_taxonomy_candidate_3,
+        seg_strategy="Window3.5"
+    )
 
 
 # NEW MAIN FUNCTION FOR SCENARIO ANALYSIS
-if __name__ == "__main__":
-    dataset_scenarios = {
-    "DC1": ["test"],                         # Legacy
-    "DC2": ["aksoprotocol", "prelim"],                   # Protocol
-    "DC3": ["aksowork"],                       # Real-world
-    "DC4": ["aksoprotocol", "aksowork", "prelim"],
-    "DC5": ["prelim", "aksoprotocol", "test"],
-    "DC6": ["test", "aksowork"],
-    "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
-}
+# if __name__ == "__main__":
+#     dataset_scenarios = {
+#     "DC1": ["test"],                         # Legacy
+#     "DC2": ["aksoprotocol", "prelim"],                   # Protocol
+#     "DC3": ["aksowork"],                       # Real-world
+#     "DC4": ["aksoprotocol", "aksowork", "prelim"],
+#     "DC5": ["prelim", "aksoprotocol", "test"],
+#     "DC6": ["test", "aksowork"],
+#     "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
+# }
     
-    results = []
+#     results = []
 
-    for DC_id, DC in dataset_scenarios.items():
-        if DC_id == "DC3":
-            seg_scenarios = ["Window2.5", 
-                            "Window3.5", 
-                            "Window5"
-                             ]
-        else:
-            seg_scenarios = [
-                "Window2.5", "Window3.5", "Window5", 
-                             "Repetition3.5"]
+#     for DC_id, DC in dataset_scenarios.items():
+#         if DC_id == "DC3":
+#             seg_scenarios = ["Window2.5", 
+#                             "Window3.5", 
+#                             "Window5"
+#                              ]
+#         else:
+#             seg_scenarios = [
+#                 "Window2.5", "Window3.5", "Window5", 
+#                              "Repetition3.5"]
         
-        # Evaluate protocol only datasets with their original labels in addition to the 
-        if DC_id in ["DC1", "DC2", "DC5"]:
-            taxonomys = {
-                         "T1":map_taxonomy_candidate_4,
-                         "T2":map_taxonomy_candidate_3,
-                         "T3":None}
-        else:
-            # otherwsie use T2 as max granularity
-            taxonomys = {"T1":map_taxonomy_candidate_4,
-                         "T2":map_taxonomy_candidate_3,
-                         }
+#         # Evaluate protocol only datasets with their original labels in addition to the 
+#         if DC_id in ["DC1", "DC2", "DC5"]:
+#             taxonomys = {
+#                          "T1":map_taxonomy_candidate_4,
+#                          "T2":map_taxonomy_candidate_3,
+#                          "T3":None}
+#         else:
+#             # otherwsie use T2 as max granularity
+#             taxonomys = {"T1":map_taxonomy_candidate_4,
+#                          "T2":map_taxonomy_candidate_3,
+#                          }
         
-        # configure such that the fullest available sensor combination scenario is used
-        if "test" in DC:
-            left_arm = False
-            upper_back = False
-            SC = "SC"
-        else:
-            left_arm=True
-            upper_back=True
-            SC = "SC1"
+#         # configure such that the fullest available sensor combination scenario is used
+#         if "test" in DC:
+#             left_arm = False
+#             upper_back = False
+#             SC = "SC"
+#         else:
+#             left_arm=True
+#             upper_back=True
+#             SC = "SC1"
         
-        for seg in seg_scenarios:
-            for clf in [
-                "NN", 
-                "SVC",
-                "RFC"
-                        ]:
-                for taxonomy_id, tax_fn in taxonomys.items():
-                    summary = run_loocv_with_pca(
-                        prefixes=DC,
-                        left_arm=left_arm,
-                        upper_back=upper_back,
-                        clf_name=clf,
-                        expanded_fsr=True,
-                        taxonomy_fn=tax_fn,
-                        seg_strategy=seg
-                    )
+#         for seg in seg_scenarios:
+#             for clf in [
+#                 "NN", 
+#                 "SVC",
+#                 "RFC"
+#                         ]:
+#                 for taxonomy_id, tax_fn in taxonomys.items():
+#                     summary = run_loocv_with_pca(
+#                         prefixes=DC,
+#                         left_arm=left_arm,
+#                         upper_back=upper_back,
+#                         clf_name=clf,
+#                         expanded_fsr=True,
+#                         taxonomy_fn=tax_fn,
+#                         seg_strategy=seg
+#                     )
 
-                    summary.update({
-                        "dataset_scenario": DC_id,
-                        "prefixes": "+".join(DC),
-                        "taxonomy": taxonomy_id,
-                        "segmentation": seg,
-                        "classifier": clf,
-                        "expanded_fsr": True,
-                        "sensor_scenario": SC,
-                    })
+#                     summary.update({
+#                         "dataset_scenario": DC_id,
+#                         "prefixes": "+".join(DC),
+#                         "taxonomy": taxonomy_id,
+#                         "segmentation": seg,
+#                         "classifier": clf,
+#                         "expanded_fsr": True,
+#                         "sensor_scenario": SC,
+#                     })
 
-                    results.append(summary)
+#                     results.append(summary)
 
-                results_df = pd.DataFrame(results)
-                os.makedirs("./results", exist_ok=True)
-                results_df.to_csv(f"./results/loocv_summary_results_FINAL.csv", index=False)
-                print(results_df)
+#                 results_df = pd.DataFrame(results)
+#                 os.makedirs("./results", exist_ok=True)
+#                 results_df.to_csv(f"./results/loocv_summary_results_FINAL.csv", index=False)
+#                 print(results_df)
             

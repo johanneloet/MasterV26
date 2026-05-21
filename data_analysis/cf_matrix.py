@@ -1,6 +1,7 @@
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 
 
 def make_confusion_matrix(
@@ -31,15 +32,36 @@ def make_confusion_matrix(
     )
     accuracy = np.trace(cf) / total if total > 0 else 0
 
+    cf_percent = np.divide(
+    cf,
+    row_sums[:, np.newaxis],
+    out=np.zeros_like(cf, dtype=float),
+    where=row_sums[:, np.newaxis] != 0,
+) * 100
+    
+    # initialize full matrix
+    color_data = np.zeros((n + 1, n + 1))
+
+    # put normalized confusion matrix in main block
+    color_data[:-1, :-1] = cf_percent
+
+
+    # set ext row/column to constant background value
+    constant_bg = 15  # light blue in "Blues" colormap
+
+    color_data[:-1, -1] = constant_bg
+    color_data[-1, :-1] = constant_bg
+    color_data[-1, -1] = constant_bg
+
     # ---- EXTENDED GRID ----
-    ext = np.zeros((n + 1, n + 1), float)
-    ext[:-1, :-1] = cf
-    ext[:-1, -1] = row_sums  # Precision column
-    ext[-1, :-1] = col_sums  # Recall row
-    ext[-1, -1] = total
+    # ext = np.zeros((n + 1, n + 1), float)
+    # ext[:-1, :-1] = cf_percent
+    # ext[:-1, -1] = row_sums  # Precision column
+    # ext[-1, :-1] = col_sums  # Recall row
+    # ext[-1, -1] = total
 
     # ---- LABELS FOR HEATMAP (only main n×n block) ----
-    labels = np.full_like(ext, "", dtype=object)  # start with empty strings
+    labels = np.full_like(color_data, "", dtype=object)  # start with empty strings
 
     # main block counts
     for i in range(n):
@@ -48,17 +70,24 @@ def make_confusion_matrix(
 
     # we leave last row/column labels as "" so seaborn doesn't draw counts there
 
+    base_cmap = plt.cm.Blues
+
+    truncated_blues = LinearSegmentedColormap.from_list(
+        "truncated_blues",
+        base_cmap(np.linspace(0, 0.40, 256))
+    )
+
     # ---- PLOTTING ----
     plt.figure(figsize=figsize)
     ax = sns.heatmap(
-        ext,
+        color_data,
         annot=labels,
         fmt="",
-        cmap=cmap,
+        cmap=truncated_blues,
         cbar=False,
         xticklabels=list(categories) + ["Precision"],
         yticklabels=list(categories) + ["Recall"],
-        annot_kws={"fontsize": fontsize, "fontweight": "bold"},
+        annot_kws={"fontsize": fontsize+6, "fontweight": "bold"},
     )
 
     # ---- ADD ROW-WISE PERCENTAGES (per predicted class / row) ----
@@ -199,7 +228,7 @@ def make_confusion_matrix(
         x,
         y - 0.3,
         f"{total:.0f}",
-        color="white",
+        color="Black",
         ha="center",
         va="center",
         fontsize=fontsize - 4,

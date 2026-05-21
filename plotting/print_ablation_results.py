@@ -4,7 +4,7 @@ import numpy as np
 df = pd.read_csv("./results/loocv_summary_results_sensor_ablation.csv")
 
 dc_order = ["DC1", "DC2", "DC3", "DC4", "DC5", "DC6", "DC7"]
-sc_order = ["SC1", "SC2", "SC3", "SC4", "SC5", "SC6", "SC7", "SC8"]
+sc_order = ["SC1", "SC2", "SC3", "SC4", "SC5", "SC6", "SC7", "SC8", "SC9"]
 
 def fmt_cell(mean, std):
     if pd.isna(mean):

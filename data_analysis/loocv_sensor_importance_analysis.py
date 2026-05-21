@@ -91,7 +91,8 @@ if __name__ == "__main__":
     
     classifiers = [
         "NN", 
-        "SVC"
+        "SVC",
+        "RFC"
     ]
     
     # Define optimal taxonomy and segmentation and classifier strategy based on stage 1 analyses
