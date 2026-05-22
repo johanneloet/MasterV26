@@ -531,11 +531,12 @@ if __name__ == "__main__":
         # 'aksoprotocol_3',
         # 'aksoprotocol_4',
         #'aksoprotocol_5',
-        # 'aksowork_1',
-        # 'aksowork_2',
-        # 'aksowork_3',
-        # 'aksowork_4',
-        # 'aksowork_5'
+        'aksowork_1',
+        'aksowork_2',
+        'aksowork_3',
+        'aksowork_4',
+        'aksowork_5'
+        #'aksowork_8',
         # 'test_1',
         # 'test_2',
         # 'test_3',
@@ -544,7 +545,7 @@ if __name__ == "__main__":
         # 'test_6',
         #'test_7',
         # 'test_8',
-        'test_9',
+        #'test_9',
         # 'test_10',
         # 'test_11',
         # 'test_12',
@@ -610,22 +611,22 @@ if __name__ == "__main__":
     # update this according to which files to run. some files (legacy) do not allow running certain scenarios...
     scenarios = [
         #scenario_SC1,
-        scenario_SC2,
+        #scenario_SC2,
         # scenario_SC3,
         # scenario_SC4,
         # scenario_SC5,
-        # scenario_SC6,
+        scenario_SC6,
         # scenario_SC7
     ]
 
     # Define settings
-    mode = "Repetition"              # "window" or "repetition"
+    mode = "Window"              # "window" or "repetition"
     expanded_fsr = True
     imu_sampling_rate = 100 # original sampling rate of the files in this run
     resample_signal = False  # set True if these files need IMU resampling (OLD-RESAMPLING WAS DONE AT THE PREPROCESSING LEVEL IN THE FINAL VERSION!)
     target_fs = 100              # target IMU fs after resampling
-    window_sec = 3.5
-    use_rep_id = True # if False, use consecutive label runs instead
+    window_sec = 5
+    use_rep_id = False # if False, use consecutive label runs instead
 
     # Run with selected settings!
     # NB IMU sampling rates must be consistent across all participants. Run different sampling rates in separate runs!

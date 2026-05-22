@@ -3,6 +3,7 @@ import os
 import seaborn as sns
 import numpy as np
 import matplotlib.colors as mcolors
+import pandas as pd
 def select_optimal_taxonomy_cell(heatmap_values, dataset_scenario):
     """
     Selects optimal segmentation + taxonomy using detail-aware taxonomy rules.
@@ -60,7 +61,7 @@ def select_optimal_taxonomy_cell(heatmap_values, dataset_scenario):
 
 
 def plot_f1_heatmaps_by_classifier(
-    csv_path="./results/loocv_summary_full_needs_redo.csv",
+    csv_path="./results/loocv_summary_results_FINAL.csv",
     output_dir="./results/heatmaps",
     metric_col="mean_f1",
     std_col="std_f1",
@@ -82,7 +83,7 @@ def plot_f1_heatmaps_by_classifier(
         dataset_scenarios = sorted(clf_df["dataset_scenario"].unique())
         n_dc = len(dataset_scenarios)
 
-        ncols = 3
+        ncols = 4
         nrows = int(np.ceil(n_dc / ncols))
 
         fig, axes = plt.subplots(
@@ -239,3 +240,100 @@ def plot_f1_heatmaps_by_classifier(
         plt.close()
 
         print(f"Saved: {save_path}")
+
+def create_optimal_performance_latex_table(
+    csv_path="./results/loocv_summary_results_FINAL.csv",
+    output_path="./results/optimal_performance_table.tex",
+):
+    df = pd.read_csv(csv_path)
+
+    rows = []
+
+    seg_display_names = {
+        "Window2.5": "SEG1",
+        "Window3.5": "SEG2",
+        "Window5": "SEG3",
+        "Repetition3.5": "SEG4",
+    }
+
+    classifier_names = {
+        "NN": "NN",
+        "RFC": "RFC",
+        "SVC": "SVC",
+    }
+
+    for dataset_scenario in sorted(df["dataset_scenario"].unique()):
+
+        dc_df = df[df["dataset_scenario"] == dataset_scenario].copy()
+
+        for classifier in sorted(dc_df["classifier"].unique()):
+
+            clf_df = dc_df[dc_df["classifier"] == classifier].copy()
+
+            heatmap_values = clf_df.pivot(
+                index="segmentation",
+                columns="taxonomy",
+                values="mean_f1",
+            )
+
+            selected = select_optimal_taxonomy_cell(
+                heatmap_values,
+                dataset_scenario
+            )
+
+            if selected is None:
+                continue
+
+            best_seg, best_tax, _ = selected
+
+            best_row = clf_df[
+                (clf_df["segmentation"] == best_seg)
+                & (clf_df["taxonomy"] == best_tax)
+            ].iloc[0]
+
+            seg_name = seg_display_names.get(best_seg, best_seg)
+
+            rows.append({
+                "Scenario": dataset_scenario,
+                "Classifier": classifier_names.get(classifier, classifier),
+                "Optimal segmentation": f"{seg_name} / {best_tax}",
+                "Accuracy": (
+                    f"{best_row['mean_accuracy']:.3f} "
+                    f"$\\pm$ {best_row['std_accuracy']:.3f}"
+                ),
+                "Precision": (
+                    f"{best_row['mean_precision']:.3f} "
+                    f"$\\pm$ {best_row['std_precision']:.3f}"
+                ),
+                "Recall": (
+                    f"{best_row['mean_recall']:.3f} "
+                    f"$\\pm$ {best_row['std_recall']:.3f}"
+                ),
+                "F1-score": (
+                    f"{best_row['mean_f1']:.3f} "
+                    f"$\\pm$ {best_row['std_f1']:.3f}"
+                ),
+            })
+
+    table_df = pd.DataFrame(rows)
+
+    latex_table = table_df.to_latex(
+        index=False,
+        escape=False,
+        column_format="lllcccc",
+        caption="Performance metrics for the optimal segmentation and taxonomy configuration selected for each dataset scenario and classifier.",
+        label="tab:optimal_performance_metrics",
+    )
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    with open(output_path, "w") as f:
+        f.write(latex_table)
+
+    print(f"Saved LaTeX table to: {output_path}")
+
+    return table_df
+
+if __name__ == "__main__":
+    plot_f1_heatmaps_by_classifier(classifiers=["NN", "SVC", "RFC"])
+    create_optimal_performance_latex_table()

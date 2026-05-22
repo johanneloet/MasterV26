@@ -308,6 +308,11 @@ def run_loocv_with_pca(
                 f"Features_{current_seg_mode}_{test_id}_expanded{expanded_fsr}_SEG{current_seg_strategy}_{full_sensor_combo_scenario}.csv"
             )
             feature_files[test_id] = Path(folder_path) / filename
+            if test_id == "aksowork_8":
+                filename = (
+                f"Features_{current_seg_mode}_{test_id}_expanded{expanded_fsr}_SEG{current_seg_strategy}_right_arm_left_arm_lower_back_upper_back.csv"
+            )
+                feature_files[test_id] = Path(folder_path) / filename
 
     test_ids = list(feature_files.keys())
 
@@ -382,7 +387,15 @@ def run_loocv_with_pca(
                 lambda row: taxonomy_fn(row["label"], row.get("static_label", None)),
                 axis=1
             )
-
+        else: 
+            train_df["label_used"] = train_df["label"].replace({
+            "neutral_load_left": "neutral_load",
+            "neutral_load_right": "neutral_load",
+            })
+            test_df["label_used"] = test_df["label"].replace({
+            "neutral_load_left": "neutral_load",
+            "neutral_load_right": "neutral_load",
+            })
         # if label_override_fn is not None:
         #     train_df["label_used"] = train_df.apply(
         #         lambda row: label_override_fn(row["label_used"], row["static_label"]),
@@ -400,6 +413,9 @@ def run_loocv_with_pca(
         train_df = train_df[train_df["label_used"] != "other"].copy()
         test_df = test_df[test_df["label_used"] != "other"].copy()
         
+        # drop neutral for dc3 only. comment this out unless evaluating that specifically!
+        train_df = train_df[train_df["label_used"] != "neutral"].copy()
+        test_df = test_df[test_df["label_used"] != "neutral"].copy()
         
 
         # # drop break
@@ -428,9 +444,6 @@ def run_loocv_with_pca(
             errors="ignore"
         )
         
-        # -------------------------
-        # Sanity checks
-        # -------------------------
         assert len(X_train) == len(Y_train), f"Train mismatch: {len(X_train)} vs {len(Y_train)}"
         assert len(X_test) == len(Y_test), f"Test mismatch: {len(X_test)} vs {len(Y_test)}"
     
@@ -519,11 +532,29 @@ def run_loocv_with_pca(
     end = time.time()
     print(f"\nDone! Total time: {end - start:.2f} sec")
 
-    print(f"\nMean Accuracy:  {np.mean(all_accuracies):.3f}")
-    print(f"Mean F1:        {np.mean(all_f1):.3f}")
-    print(f"Mean Precision: {np.mean(all_precision):.3f}")
-    print(f"Mean Recall:    {np.mean(all_recall):.3f}")
+    print(
+        f"\nAccuracy:  "
+        f"{np.mean(all_accuracies):.3f} ± "
+        f"{np.std(all_accuracies, ddof=1):.3f}"
+    )
 
+    print(
+        f"F1:        "
+        f"{np.mean(all_f1):.3f} ± "
+        f"{np.std(all_f1, ddof=1):.3f}"
+    )
+
+    print(
+        f"Precision: "
+        f"{np.mean(all_precision):.3f} ± "
+        f"{np.std(all_precision, ddof=1):.3f}"
+    )
+
+    print(
+        f"Recall:    "
+        f"{np.mean(all_recall):.3f} ± "
+        f"{np.std(all_recall, ddof=1):.3f}"
+    )
     save_path = "./plots_use"
     os.makedirs(save_path, exist_ok=True)
 
@@ -531,12 +562,12 @@ def run_loocv_with_pca(
 
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
 
-    run_name = f"{clf_name}_{sensor_combo_scenario}_expanded{expanded_fsr}_class{class_version}"
+    run_name = f"{clf_name}_{sensor_combo_scenario}_expanded{expanded_fsr}_class{class_version}_DC#DROPNEUTRAL"
 
     make_confusion_matrix(
         cf=cm,
         categories=labels,
-        title=f"{clf_name} Confusion Matrix",
+        #title=f"{clf_name} Confusion Matrix",
         savepath=f"./plots_use/{run_name}.pdf",
         color_code={},
     )
@@ -576,80 +607,97 @@ def run_loocv_with_pca(
 if __name__ == "__main__":
     dataset_scenarios = {
     "DC1": ["test"],                         # Legacy
-    # "DC2": ["aksoprotocol", "prelim"],                   # Protocol
-    # "DC3": ["aksowork"],                       # Real-world
-    # "DC4": ["aksoprotocol", "aksowork", "prelim"],
-    # "DC5": ["prelim", "aksoprotocol", "test"],
-    # "DC6": ["test", "aksowork"],
-    # "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
+    "DC2": ["aksoprotocol", "prelim"],                   # Protocol
+    "DC3": ["aksowork"],                       # Real-world
+    "DC4": ["aksoprotocol", "aksowork", "prelim"],
+    "DC5": ["prelim", "aksoprotocol", "test"],
+    "DC6": ["test", "aksowork"],
+    "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
 }
     
-    results = []
+    
+    run_loocv_with_pca(
+        clf_name = "NN",
+        prefixes = dataset_scenarios["DC3"],
+        left_arm = True,
+        upper_back= True,
+        left_fsr=True,
+        right_fsr=True,
+        taxonomy_fn=map_taxonomy_candidate_3,
+        seg_strategy="Window3.5",
+        expanded_fsr=True
+    )
+    
+    
+    
+    #results = []
+    
+    
 
-    for DC_id, DC in dataset_scenarios.items():
-        if DC_id == "DC3":
-            seg_scenarios = ["Window2.5", 
-                            "Window3.5", 
-                            "Window5"
-                             ]
-        else:
-            seg_scenarios = [
-                "Window2.5", "Window3.5", "Window5", 
-                             "Repetition3.5"]
+    # for DC_id, DC in dataset_scenarios.items():
+    #     if DC_id == "DC3":
+    #         seg_scenarios = ["Window2.5", 
+    #                         "Window3.5", 
+    #                         "Window5"
+    #                          ]
+    #     else:
+    #         seg_scenarios = [
+    #             "Window2.5", "Window3.5", "Window5", 
+    #                          "Repetition3.5"]
         
-        # Evaluate protocol only datasets with their original labels in addition to the 
-        if DC_id in ["DC1", "DC2", "DC5"]:
-            taxonomys = {
-                         "T1":map_taxonomy_candidate_4,
-                         "T2":map_taxonomy_candidate_3,
-                         "T3":None}
-        else:
-            # otherwsie use T2 as max granularity
-            taxonomys = {"T1":map_taxonomy_candidate_4,
-                         "T2":map_taxonomy_candidate_3,
-                         }
+    #     # Evaluate protocol only datasets with their original labels in addition to the 
+    #     if DC_id in ["DC1", "DC2", "DC5"]:
+    #         taxonomys = {
+    #                      "T1":map_taxonomy_candidate_4,
+    #                      "T2":map_taxonomy_candidate_3,
+    #                      "T3":None}
+    #     else:
+    #         # otherwsie use T2 as max granularity
+    #         taxonomys = {"T1":map_taxonomy_candidate_4,
+    #                      "T2":map_taxonomy_candidate_3,
+    #                      }
         
-        # configure such that the fullest available sensor combination scenario is used
-        if "test" in DC:
-            left_arm = False
-            upper_back = False
-            SC = "SC"
-        else:
-            left_arm=True
-            upper_back=True
-            SC = "SC1"
+    #     # configure such that the fullest available sensor combination scenario is used
+    #     if "test" in DC:
+    #         left_arm = False
+    #         upper_back = False
+    #         SC = "SC"
+    #     else:
+    #         left_arm=True
+    #         upper_back=True
+    #         SC = "SC1"
         
-        for seg in seg_scenarios:
-            for clf in [
-                #"NN", 
-                "SVC",
-                #"RFC"
-                        ]:
-                for taxonomy_id, tax_fn in taxonomys.items():
-                    summary = run_loocv_with_pca(
-                        prefixes=DC,
-                        left_arm=left_arm,
-                        upper_back=upper_back,
-                        clf_name=clf,
-                        expanded_fsr=True,
-                        taxonomy_fn=tax_fn,
-                        seg_strategy=seg
-                    )
+    #     for seg in seg_scenarios:
+    #         for clf in [
+    #             "NN", 
+    #             "SVC",
+    #             "RFC"
+    #                     ]:
+    #             for taxonomy_id, tax_fn in taxonomys.items():
+    #                 summary = run_loocv_with_pca(
+    #                     prefixes=DC,
+    #                     left_arm=left_arm,
+    #                     upper_back=upper_back,
+    #                     clf_name=clf,
+    #                     expanded_fsr=True,
+    #                     taxonomy_fn=tax_fn,
+    #                     seg_strategy=seg
+    #                 )
 
-                    summary.update({
-                        "dataset_scenario": DC_id,
-                        "prefixes": "+".join(DC),
-                        "taxonomy": taxonomy_id,
-                        "segmentation": seg,
-                        "classifier": clf,
-                        "expanded_fsr": True,
-                        "sensor_scenario": SC,
-                    })
+    #                 summary.update({
+    #                     "dataset_scenario": DC_id,
+    #                     "prefixes": "+".join(DC),
+    #                     "taxonomy": taxonomy_id,
+    #                     "segmentation": seg,
+    #                     "classifier": clf,
+    #                     "expanded_fsr": True,
+    #                     "sensor_scenario": SC,
+    #                 })
 
-                    results.append(summary)
+    #                 results.append(summary)
 
-                results_df = pd.DataFrame(results)
-                os.makedirs("./results", exist_ok=True)
-                results_df.to_csv(f"./results/{clf}_SEG{seg}_{DC_id}_loocv_summary_results_FINAL.csv", index=False)
-                print(results_df)
+    #             results_df = pd.DataFrame(results)
+    #             os.makedirs("./results", exist_ok=True)
+    #             results_df.to_csv(f"./results/{clf}_SEG{seg}_{DC_id}_loocv_summary_results_FINAL.csv", index=False)
+    #             print(results_df)
             
