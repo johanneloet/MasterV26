@@ -70,6 +70,7 @@ def plot_all_sensors(
     imu_components=["Axl", "Gyr", "Mag"],
     fsr_mode="All",
     fsr_mean_name="FSR_mean",
+    plot_fsr=True
                     ):
     """
     Plot multiple sensors in separate subplots.

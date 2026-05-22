@@ -4,8 +4,6 @@ import seaborn as sns
 import numpy as np
 import matplotlib.colors as mcolors
 import pandas as pd
-
-
 def select_optimal_taxonomy_cell(heatmap_values, dataset_scenario):
     """
     Selects optimal segmentation + taxonomy using detail-aware taxonomy rules.
@@ -63,7 +61,7 @@ def select_optimal_taxonomy_cell(heatmap_values, dataset_scenario):
 
 
 def plot_f1_heatmaps_by_classifier(
-    csv_path="./results/full_final_loocv_results.csv",
+    csv_path="./results/loocv_summary_results_FINAL.csv",
     output_dir="./results/heatmaps",
     metric_col="mean_f1",
     std_col="std_f1",
@@ -244,7 +242,7 @@ def plot_f1_heatmaps_by_classifier(
         print(f"Saved: {save_path}")
 
 def create_optimal_performance_latex_table(
-    csv_path="./results/full_final_loocv_results.csv",
+    csv_path="./results/loocv_summary_results_FINAL.csv",
     output_path="./results/optimal_performance_table.tex",
 ):
     df = pd.read_csv(csv_path)
@@ -335,7 +333,6 @@ def create_optimal_performance_latex_table(
     print(f"Saved LaTeX table to: {output_path}")
 
     return table_df
-
 
 if __name__ == "__main__":
     plot_f1_heatmaps_by_classifier(classifiers=["NN", "SVC", "RFC"])
