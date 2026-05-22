@@ -69,7 +69,11 @@ def apply_taxonomy(df, taxonomy_fn):
     df = df.copy()
 
     if taxonomy_fn is None:
-        df["label_used"] = df["label"]
+        #df["label_used"] = df["label"]
+        df["label_used"] = df["label"].replace({
+        "neutral_load_left": "neutral_load",
+        "neutral_load_right": "neutral_load",
+        })
     else:
         df["label_used"] = df.apply(
             lambda row: taxonomy_fn(row["label"], row.get("static_label", None)),
@@ -341,9 +345,7 @@ for dc, tax in selected_cases:
         print(f"Skipping {dc}-{tax}: no data")
         continue
 
-    # --------------------------------------------------
-    # counts pivot
-    # --------------------------------------------------
+
     pivot_counts = plot_df.pivot_table(
         index="segmentation",
         columns="label",
@@ -355,17 +357,12 @@ for dc, tax in selected_cases:
     pivot_counts = pivot_counts.reindex(seg_order)
     pivot_counts = pivot_counts.dropna(how="all")
 
-    # --------------------------------------------------
-    # percentages pivot
-    # --------------------------------------------------
+
     pivot_pct = (
         pivot_counts.div(pivot_counts.sum(axis=1), axis=0)
         * 100
     )
 
-    # --------------------------------------------------
-    # muted blue/purple palette
-    # --------------------------------------------------
     import matplotlib.colors as mcolors
     n_classes = len(pivot_pct.columns)
     
@@ -384,19 +381,6 @@ for dc, tax in selected_cases:
         for x in np.linspace(0.35, 0.9, n_classes)
     ]
     
-    # alternate colormap (same as boxplot)
-#     import seaborn as sns
-
-#     base_colors = sns.color_palette("husl", n_colors=n_classes)
-#     # finer tax colors
-#     colors = [
-#         sns.desaturate(c, 1)
-#         for c in base_colors
-#     ]
-#     colors = sns.color_palette(
-#     "blend:#e7b7d4,#b7d7e8,#7fcfd1",
-#     n_colors=n_classes
-# )
     seg_name_map = {
     "Window2.5": "SEG1",
     "Window3.5": "SEG2",
@@ -413,7 +397,7 @@ for dc, tax in selected_cases:
         for x in pivot_pct.index
     ]
 
-    fig, ax = plt.subplots(figsize=(11, 7))
+    fig, ax = plt.subplots(figsize=(14, 7))
 
     pivot_pct.plot(
         kind="bar",
@@ -424,7 +408,7 @@ for dc, tax in selected_cases:
         alpha=0.5
     )
 
-    ax.set_title(f"Class distribution for {dc} using {tax}")
+    #ax.set_title(f"Class distribution for {dc} using {tax}")
     ax.set_xlabel("Segmentation strategy")
     ax.set_ylabel("Class percentage (%)")
 
@@ -432,7 +416,8 @@ for dc, tax in selected_cases:
     ax.legend(
         title="Class",
         bbox_to_anchor=(1.02, 1),
-        loc="upper left"
+        loc="upper left",
+        fontsize=14
     )
     
     # horizontal legend below plot (use for the protocol plots at least)
@@ -467,7 +452,7 @@ for dc, tax in selected_cases:
                 s=f"class samples: {int(count)}",
                 ha="center",
                 va="center",
-                fontsize=10,
+                fontsize=11,
                 color="black",
             )
 
@@ -484,7 +469,7 @@ for dc, tax in selected_cases:
             s=f"total samples={int(total_count)}",
             ha="center",
             va="bottom",
-            fontsize=11,
+            fontsize=12,
             fontweight="bold",
         )
 

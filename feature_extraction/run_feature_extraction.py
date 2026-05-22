@@ -462,6 +462,17 @@ def run_feature_extraction_for_multiple_tests(
             "neutral_load_right",
             ]
 
+            if test_id == 'prelim_8':
+                continuous_labels = [
+                "walking",
+                "standing",
+                "sitting",
+                "neutral_load",
+                "neutral_load_left",
+                "neutral_load_right",
+                "drag"
+                ] # <- drag was recorded in one segment for prelim_8, therefore treat it like a continuous label for this test
+
             dfs = [df_rarm, df_larm, df_lback, df_uback, df_lfsr, df_rfsr]
 
             if mode == "Repetition":
@@ -525,7 +536,7 @@ if __name__ == "__main__":
         # 'prelim_5',
         # 'prelim_6',
        # 'prelim_7',
-        # 'prelim_8',
+        'prelim_8',
         # 'aksoprotocol_1',
         # 'aksoprotocol_2',
         # 'aksoprotocol_3',
@@ -544,7 +555,7 @@ if __name__ == "__main__":
         # 'test_6',
         #'test_7',
         # 'test_8',
-        'test_9',
+        #'test_9',
         # 'test_10',
         # 'test_11',
         # 'test_12',
@@ -609,8 +620,8 @@ if __name__ == "__main__":
     
     # update this according to which files to run. some files (legacy) do not allow running certain scenarios...
     scenarios = [
-        #scenario_SC1,
-        scenario_SC2,
+        scenario_SC1,
+        #scenario_SC2,
         # scenario_SC3,
         # scenario_SC4,
         # scenario_SC5,
