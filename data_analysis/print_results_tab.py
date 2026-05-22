@@ -1,7 +1,7 @@
 import pandas as pd
 
 # ---- LOAD DATA ----
-df = pd.read_csv("./results/kfold_summary_results.csv")
+df = pd.read_csv("./results/kfold_summary_results_NN_SVC_RFC.csv")
 
 # ---- FIND BEST SEGMENTATION PER (dataset, classifier) ----
 best_rows = (

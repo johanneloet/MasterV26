@@ -70,12 +70,18 @@ def run_stratified_kfold_with_pca(
         seg_mode = "Repetition"
 
     for test_id, folder_path in test_folder_dict.items():
-        if "aksowork" in test_id:
-            seg_mode = "Window"
-            seg_strategy = "Window3.5" #quickfix
+        # use local variables to avoid mutating over multiple files
+        file_seg_mode = seg_mode
+        file_seg_strategy = seg_strategy
+
+        if "aksowork" in test_id and file_seg_mode == "Repetition":
+            file_seg_mode = "Window"
+            file_seg_strategy = "Window3.5"
+
         if test_id.split("_")[0] in prefixes:
             filename = (
-                f"Features_{seg_mode}_{test_id}_expanded{expanded_fsr}_SEG{seg_strategy}_{sensor_combo_scenario}.csv"
+                f"Features_{file_seg_mode}_{test_id}_expanded{expanded_fsr}"
+                f"_SEG{file_seg_strategy}_{sensor_combo_scenario}.csv"
             )
             feature_files[test_id] = Path(folder_path) / filename
     
@@ -233,7 +239,7 @@ def run_stratified_kfold_with_pca(
         cf=cm,
         categories=labels,
         #title=f"{clf_name} Stratified {n_splits}-Fold Confusion Matrix",
-        savepath=f"./plots_use/{run_name}_AKSOWORK_USE_MATRIX.pdf",
+        savepath=f"./plots_use/{run_name}_AKSOWORK_USE.pdf",
         color_code={},
     )
 
@@ -252,13 +258,13 @@ def run_stratified_kfold_with_pca(
 
 if __name__ == "__main__":
     dataset_scenarios = {
-   # "DC1": ["test"],                         # Legacy
-   # "DC2": ["aksoprotocol", "prelim"],                   # Protocol
+   "DC1": ["test"],                         # Legacy
+   "DC2": ["aksoprotocol", "prelim"],                   # Protocol
     "DC3": ["aksowork"],                       # Real-world
-   # "DC4": ["aksoprotocol", "aksowork", "prelim"],
-    #"DC5": ["prelim", "aksoprotocol", "test"],
-    #"DC6": ["test", "aksowork"],
-    #"DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
+   "DC4": ["aksoprotocol", "aksowork", "prelim"],
+    "DC5": ["prelim", "aksoprotocol", "test"],
+    "DC6": ["test", "aksowork"],
+    "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
 }
     
     results = []
@@ -266,7 +272,7 @@ if __name__ == "__main__":
     for DC_id, DC in dataset_scenarios.items():
         if DC_id == "DC3":
             seg_scenarios = ["Window2.5", 
-                            #"Window3.5", "Window5"
+                            "Window3.5", "Window5"
                              ]
         else:
             seg_scenarios = [
@@ -294,8 +300,8 @@ if __name__ == "__main__":
         
         for seg in seg_scenarios:
             for clf in [
-                # "RFC",
-                # "NN", 
+                 "RFC",
+                 "NN", 
                 "SVC"
                         ]:
                 summary = run_stratified_kfold_with_pca(
@@ -323,7 +329,7 @@ if __name__ == "__main__":
 
     results_df = pd.DataFrame(results)
     os.makedirs("./results", exist_ok=True)
-    #results_df.to_csv("./results/kfold_summary_results_NN_SVC_skip_prelim1.csv", index=False)
+    results_df.to_csv("./results/kfold_summary_results_all_clfs_FINAL_I_HOPE.csv", index=False)
     print(results_df)
             
             
