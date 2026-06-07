@@ -239,8 +239,9 @@ def run_stratified_kfold_with_pca(
         cf=cm,
         categories=labels,
         #title=f"{clf_name} Stratified {n_splits}-Fold Confusion Matrix",
-        savepath=f"./plots_use/{run_name}_AKSOWORK_USE.pdf",
+        savepath=f"./final_conf_matrices/{run_name}_AKSOWORK_USE.pdf",
         color_code={},
+        fontsize=70
     )
 
     summary = {
@@ -258,13 +259,13 @@ def run_stratified_kfold_with_pca(
 
 if __name__ == "__main__":
     dataset_scenarios = {
-   "DC1": ["test"],                         # Legacy
-   "DC2": ["aksoprotocol", "prelim"],                   # Protocol
-    "DC3": ["aksowork"],                       # Real-world
-   "DC4": ["aksoprotocol", "aksowork", "prelim"],
-    "DC5": ["prelim", "aksoprotocol", "test"],
-    "DC6": ["test", "aksowork"],
-    "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
+#    "DC1": ["test"],                         # Legacy
+#    "DC2": ["aksoprotocol", "prelim"],                   # Protocol
+  "DC3": ["aksowork"],                       # Real-world
+#    "DC4": ["aksoprotocol", "aksowork", "prelim"],
+#     "DC5": ["prelim", "aksoprotocol", "test"],
+#     "DC6": ["test", "aksowork"],
+#     "DC7": ["prelim", "aksoprotocol", "aksowork", "test"],
 }
     
     results = []
@@ -272,7 +273,7 @@ if __name__ == "__main__":
     for DC_id, DC in dataset_scenarios.items():
         if DC_id == "DC3":
             seg_scenarios = ["Window2.5", 
-                            "Window3.5", "Window5"
+                            #"Window3.5", "Window5"
                              ]
         else:
             seg_scenarios = [
@@ -300,8 +301,8 @@ if __name__ == "__main__":
         
         for seg in seg_scenarios:
             for clf in [
-                 "RFC",
-                 "NN", 
+                #  "RFC",
+                #  "NN", 
                 "SVC"
                         ]:
                 summary = run_stratified_kfold_with_pca(
@@ -327,9 +328,9 @@ if __name__ == "__main__":
 
                 results.append(summary)
 
-    results_df = pd.DataFrame(results)
-    os.makedirs("./results", exist_ok=True)
-    results_df.to_csv("./results/kfold_summary_results_all_clfs_FINAL_I_HOPE.csv", index=False)
-    print(results_df)
+    # results_df = pd.DataFrame(results)
+    # os.makedirs("./results", exist_ok=True)
+    # results_df.to_csv("./results/kfold_summary_results_all_clfs_FINAL_I_HOPE.csv", index=False)
+    # print(results_df)
             
             

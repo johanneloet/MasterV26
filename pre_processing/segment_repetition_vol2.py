@@ -19,39 +19,10 @@ def plot_activity_accelerations_peaks_and_magnitude(
     height=1100,
     distance=1100,
     peak_indices=None,
+    plot_separation_lines=False,
     colors=None,
     figsize=(12, 6),
 ):
-    """
-    Plot acceleration components (X, Y, Z), magnitude, and detected peaks
-    for a given activity label from an IMU DataFrame.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        DataFrame with accelerometer data and a 'label' column and a 'ReconstructedTime' column.
-    activity_label : str
-        The movement label to filter (e.g., 'hand_up_back').
-    height : float, optional
-        Minimum height (in mg) for peak detection.
-    distance : int, optional
-        Minimum distance (in samples) between peaks.
-    peak_indices : array-like, optional
-        Custom peak indices to plot. If None, peaks will be auto-detected.
-    colors : dict, optional
-        Color dictionary for the curves.
-    figsize : tuple, optional
-        Figure size for the plot.
-
-    Returns
-    -------
-    subset : pandas.DataFrame
-        Subset of the data corresponding to the selected label.
-    peak_indices : np.ndarray
-        Indices of the plotted peaks.
-    properties : dict or None
-        Properties from scipy.signal.find_peaks if peaks were auto-detected.
-    """
 
     if colors is None:
         colors = {
@@ -123,8 +94,31 @@ def plot_activity_accelerations_peaks_and_magnitude(
         "rx",
         label="Peaks",
     )
+    
+        # Plot separation lines between even and odd peaks
+    if plot_separation_lines:
+        separation_times = []
 
-    # --- Style ---
+        for i in range(0, len(local_peak_indices) - 1, 2):
+            even_peak = local_peak_indices[i]
+            odd_peak = local_peak_indices[i + 1]
+
+            t_even = subset["ReconstructedTime"].iloc[even_peak]
+            t_odd = subset["ReconstructedTime"].iloc[odd_peak]
+
+            midpoint_time = (t_even + t_odd) / 2
+            separation_times.append(midpoint_time)
+
+            plt.axvline(
+                midpoint_time,
+                color="black",
+                linestyle="--",
+                linewidth=1,
+                alpha=0.7,
+                label="Repetition boundary" if i == 0 else None,
+            )
+
+    # Style
     plt.title(
         f"Acceleration Components over Time ({activity_label})",
         fontsize=16,

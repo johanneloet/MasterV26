@@ -6,11 +6,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
-from sklearn.cluster import DBSCAN
 
 from feature_extraction.get_paths import get_test_folder_paths
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 
 from utils import drop_label
 from plotting.cluster_plots import save_cluster_label_heatmap
@@ -27,6 +25,7 @@ def run_kmeans_model_selection_on_dataset(
     expanded_fsr=False,
     prefixes=["prelim"],
     feature_mode="Window",
+    feature_window_length=3.5,
     k_values=range(2, 13),
     use_pca=True,
     n_pca=0.95,
@@ -57,7 +56,7 @@ def run_kmeans_model_selection_on_dataset(
     for test_id, folder_path in test_folder_dict.items():
         if test_id.split("_")[0] in prefixes:
             feature_filename = (
-                f"Features_{feature_mode}_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
+                f"Features_{feature_mode}_{test_id}_expanded{expanded_fsr}_SEG{feature_mode}{feature_window_length}_{sensor_combo_scenario}.csv"
             )
             include_csvs.append(Path(folder_path) / feature_filename)
 
@@ -111,16 +110,26 @@ def run_kmeans_model_selection_on_dataset(
 
     return pd.DataFrame(results)
 
-def plot_kmeans_model_selection(results_df):
+def plot_kmeans_model_selection(results_df, filename):
     import matplotlib.pyplot as plt
 
     plt.figure(figsize=(6, 4))
-    plt.plot(results_df["k"], results_df["silhouette"], marker="o")
+
+    plt.plot(
+        results_df["k"],
+        results_df["silhouette"],
+        marker="o"
+    )
+
     plt.xlabel("Number of clusters (k)")
     plt.ylabel("Silhouette score")
     plt.title("K-means model selection")
+
     plt.tight_layout()
-    plt.show()
+
+    plt.savefig(filename, bbox_inches="tight", dpi=300)
+
+    plt.close()
 
 def run_kmeans_on_dataset(
     right_arm=True,
@@ -262,182 +271,6 @@ def run_kmeans_on_dataset(
     return out_df, km, pca, scaler
 
 
-
-def plot_pca_clusters(scores_df, pc_x="PC1", pc_y="PC2", cluster_col="cluster"):
-    import matplotlib.pyplot as plt
-    import numpy as np
-    cmap = plt.get_cmap("Set3")
-    unique_clusters = sorted(scores_df[cluster_col].unique())
-    colors = cmap(np.linspace(0.35, 0.75, 5))
-    cluster_to_color = {cl: colors[i] for i, cl in enumerate(unique_clusters)}
-
-    plt.figure(figsize=(10, 8))
-
-    for cl in unique_clusters:
-        sub = scores_df[scores_df[cluster_col] == cl]
-
-        plt.scatter(
-            sub[pc_x],
-            sub[pc_y],
-            color=cluster_to_color[cl],
-            s=30,
-            alpha=0.75,
-            label=str(cl),
-        )
-
-    plt.title(f"PCA colored by {cluster_col}")
-    plt.xlabel(pc_x)
-    plt.ylabel(pc_y)
-    plt.legend(bbox_to_anchor=(1.02, 1), loc="upper left")
-    plt.tight_layout()
-    plt.show()
-
-
-
-def summarize_clusters_long(df, cluster_col="cluster", label_col="label", top_n=None):
-    import pandas as pd
-
-    rows = []
-
-    df['label'] = df['label'].apply(map_label_hierarchical)
-
-    for cl in sorted(df[cluster_col].unique()):
-        sub = df[df[cluster_col] == cl]
-        counts = sub[label_col].value_counts()
-        total = counts.sum()
-
-        for label, count in counts.items():
-            rows.append({
-                "cluster": cl,
-                "label": label,
-                "count": int(count),
-                "percentage": count / total,
-            })
-
-    out = pd.DataFrame(rows).sort_values(
-        ["cluster", "count"], ascending=[True, False]
-    )
-
-    if top_n is not None:
-        out = (
-            out.groupby("cluster", group_keys=False)
-            .head(top_n)
-            .reset_index(drop=True)
-        )
-
-    return out
-
-def save_cluster_summaries_png(df, cluster_col="cluster", label_col="label", top_n=10, out_dir="cluster_tables"):
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    from pathlib import Path
-
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    summary = summarize_clusters_long(df, cluster_col=cluster_col, label_col=label_col, top_n=top_n)
-
-    for cl in sorted(summary["cluster"].unique()):
-        sub = summary[summary["cluster"] == cl].copy()
-        sub["percentage"] = (100 * sub["percentage"]).round(1).astype(str) + "%"
-
-        fig_h = max(2.5, 0.45 * len(sub) + 1)
-        fig, ax = plt.subplots(figsize=(8, fig_h))
-        ax.axis("off")
-
-        tbl = ax.table(
-            cellText=sub[["label", "count", "percentage"]].values,
-            colLabels=["label", "count", "%"],
-            loc="center"
-        )
-        tbl.auto_set_font_size(False)
-        tbl.set_fontsize(9)
-        tbl.scale(1, 1.3)
-
-        plt.title(f"Cluster {cl}: top labels")
-        plt.savefig(out_dir / f"cluster_{cl}_summary.png", dpi=300, bbox_inches="tight")
-        plt.close(fig)
-
-
-def cluster_label_crosstab(df, cluster_col="cluster", label_col="label", map_hierarchical=True):
-    plot_df = df.copy()
-
-    if map_hierarchical:
-        plot_df[label_col] = plot_df[label_col].apply(map_label_hierarchical)
-
-    ct_counts = pd.crosstab(plot_df[cluster_col], plot_df[label_col])
-    ct_pct = pd.crosstab(
-        plot_df[cluster_col],
-        plot_df[label_col],
-        normalize="index"
-    ) * 100
-
-    return ct_counts, ct_pct
-
-def save_kmeans_cluster_label_heatmap(
-    df,
-    filename="kmeans_cluster_label_heatmap.png",
-    cluster_col="cluster",
-    label_col="label",
-    map_hierarchical=True,
-    sort_labels=True,
-    annotate=True,
-):
-
-    _, ct_pct = cluster_label_crosstab(
-        df,
-        cluster_col=cluster_col,
-        label_col=label_col,
-        map_hierarchical=map_hierarchical,
-    )
-
-    # optional: order labels by overall frequency for cleaner plot
-    if sort_labels:
-        label_order = ct_pct.sum(axis=0).sort_values(ascending=False).index
-        ct_pct = ct_pct[label_order]
-
-    # pastel BuPu-style colormap
-    pastel_bupu = LinearSegmentedColormap.from_list(
-        "pastel_bupu",
-        ["#f7fcfd", "#e0ecf4", "#bfd3e6", "#9ebcda", "#c994c7", "#ddcce6"]
-    )
-
-    fig_w = max(8, 0.55 * ct_pct.shape[1])
-    fig_h = max(4.5, 0.7 * ct_pct.shape[0])
-
-    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
-
-    im = ax.imshow(
-        ct_pct.values,
-        aspect="auto",
-        cmap=pastel_bupu, # caps the darkest shade before 100%
-    )
-
-    cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label("% inside cluster")
-
-    ax.set_xticks(np.arange(ct_pct.shape[1]))
-    ax.set_xticklabels(ct_pct.columns, rotation=45, ha="right")
-    ax.set_yticks(np.arange(ct_pct.shape[0]))
-    ax.set_yticklabels(ct_pct.index)
-
-    ax.set_xlabel("Label")
-    ax.set_ylabel("K-means cluster")
-    ax.set_title("K-means cluster composition by label (%)")
-
-    if annotate:
-        for i in range(ct_pct.shape[0]):
-            for j in range(ct_pct.shape[1]):
-                val = ct_pct.iloc[i, j]
-                if val >= 5:
-                    ax.text(j, i, f"{val:.0f}", ha="center", va="center", fontsize=8)
-
-    plt.tight_layout()
-    plt.savefig(filename, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-
-    return ct_pct
-
 if __name__ == '__main__':
     results = run_kmeans_model_selection_on_dataset(
     right_arm=True,
@@ -452,7 +285,7 @@ if __name__ == '__main__':
     k_values=range(2, 13),
     use_pca=True,
     n_pca=0.95,
-    random_state=88,)
+    random_state=343)
 
     plot_kmeans_model_selection(results)
 
@@ -470,23 +303,5 @@ if __name__ == '__main__':
     n_clusters=4,
     use_pca=True,
     n_pca=0.95,
-    random_state=42,
+    random_state=343,
     )
-
-    plot_pca_clusters(clustered_df)
-    
-    summary_df = summarize_clusters_long(clustered_df, top_n=10)
-    print(summary_df)
-    save_cluster_summaries_png(clustered_df, top_n=50)
-
-    ct_pct = save_cluster_label_heatmap(
-    clustered_df,
-    filename="kmeans_cluster_label_heatmap.png",
-    map_label_fn=map_label_hierarchical,
-    drop_noise=False,   # keep -1 in plot
-    min_total_label_count=0,
-    sort_labels=False,
-    sort_clusters=False,
-    )
-
-    print(ct_pct.round(1))

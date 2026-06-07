@@ -204,21 +204,32 @@ def plot_pca_agglomerative_clusters(scores_df, pc_x="PC1", pc_y="PC2", cluster_c
 
 
 def plot_agglomerative_dendrogram(
-    X_model,
+    X,
+    filename,
     method="ward",
     truncate_mode="level",
     p=5,
     figsize=(12, 6),
 ):
-    Z = linkage(X_model, method=method)
+    Z = linkage(X, method=method)
 
     plt.figure(figsize=figsize)
-    dendrogram(Z, truncate_mode=truncate_mode, p=p)
+
+    dendrogram(
+        Z,
+        truncate_mode=truncate_mode,
+        p=p
+    )
+
     plt.title(f"Agglomerative dendrogram ({method})")
     plt.xlabel("Samples / merged clusters")
     plt.ylabel("Distance")
+
     plt.tight_layout()
-    plt.show()
+
+    plt.savefig(filename, bbox_inches="tight", dpi=300)
+
+    plt.close()
 
     return Z
 
@@ -280,8 +291,8 @@ if __name__ == "__main__":
         p=5,
     )
 
-    counts = summarize_labels_in_clusters(aggl_df)
-    ct_counts, ct_pct = cluster_label_crosstab(aggl_df)
+    # counts = summarize_labels_in_clusters(aggl_df)
+    # ct_counts, ct_pct = cluster_label_crosstab(aggl_df)
 
     save_cluster_label_heatmap(
         aggl_df,
@@ -289,7 +300,7 @@ if __name__ == "__main__":
         cluster_col="cluster",
         label_col="label",
         title="Agglomerative: Cluster vs Label (%)",
-        map_label_fn=map_label_hierarchical,
+        map_label_fn=None,
         drop_noise=False,
         min_total_label_count=0,
         sort_labels=False,

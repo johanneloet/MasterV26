@@ -17,7 +17,7 @@ def plot_pca_scores(
     style_by=None,
     title=None,
     save_path=None,
-    figsize=(8, 6),
+    figsize=(12, 8),
     alpha=0.75,
 ):
     x_col = f"PC{pc_x}"
@@ -91,8 +91,8 @@ def plot_pca_scores(
     if pca is not None:
         x_var = pca.explained_variance_ratio_[pc_x - 1] * 100
         y_var = pca.explained_variance_ratio_[pc_y - 1] * 100
-        ax.set_xlabel(f"{x_col} ({x_var:.1f}% variance)")
-        ax.set_ylabel(f"{y_col} ({y_var:.1f}% variance)")
+        ax.set_xlabel(f"{x_col} ({x_var:.1f}% variance)", fontsize=16)
+        ax.set_ylabel(f"{y_col} ({y_var:.1f}% variance)", fontsize=16)
     else:
         ax.set_xlabel(x_col)
         ax.set_ylabel(y_col)
@@ -100,16 +100,21 @@ def plot_pca_scores(
     if title is None:
         title = f"PCA score plot colored by {color_by}"
 
-    ax.set_title(title)
+   # ax.set_title(title)
 
     ax.legend(
-        loc="center left",
-        bbox_to_anchor=(1.02, 0.5),
-        frameon=False,
-        fontsize=8,
+        loc="upper center",
+        bbox_to_anchor=(0.0, -0.21, 1.0, 0.1),
+        ncol=4,
+        title="Label",
+        title_fontsize=15,
+        fontsize=15,
+        frameon=True,
+        mode="expand",
+        markerscale=2.5,
+        handletextpad=0.1,
     )
-
-    plt.tight_layout()
+    #plt.tight_layout()
 
     if save_path is not None:
         plt.savefig(save_path, dpi=300, bbox_inches="tight")

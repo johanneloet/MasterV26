@@ -3,8 +3,8 @@
 # Study plots for each scenario and conclude on two levels of taxonomy that will work across datasets. One very coarse, and one finer (which will perform worse)
 
 from data_analysis.dbscan_clustering import run_dbscan_on_dataset
-from data_analysis.kmeans_clustering import run_kmeans_model_selection_on_dataset, run_kmeans_on_dataset
-from data_analysis.agglomerative_clustering import run_agglomerative_on_dataset
+from data_analysis.kmeans_clustering import run_kmeans_model_selection_on_dataset, run_kmeans_on_dataset, plot_kmeans_model_selection
+from data_analysis.agglomerative_clustering import run_agglomerative_on_dataset, plot_agglomerative_dendrogram
 from feature_extraction.get_paths import get_test_folder_paths
 from plotting.cluster_plots import plot_pca_clusters, save_cluster_label_heatmap, save_cluster_label_stacked_bar
 from utils import map_taxonomy_candidate_1, map_taxonomy_candidate_2, map_taxonomy_candidate_3, map_taxonomy_candidate_4
@@ -74,9 +74,7 @@ def run_clustering_analysis(analysis_scenarios):
             print("------------------------")
             print("Scenario:", scenario["id"], "Segmentation:", strat)
 
-            # ==================================================
-            # HDBSCAN / DBSCAN
-            # ==================================================
+            # HDBSCAN
             print("Beginning HDBSCAN clustering...")
 
             dbscan_df, _, _, _ = run_dbscan_on_dataset(
@@ -98,8 +96,9 @@ def run_clustering_analysis(analysis_scenarios):
             plot_pca_clusters(
                 dbscan_df,
                 save_path=f"cluster_plots/dbscan_{strat}_{scenario['id']}_clusters.pdf",
-                style_by="prefix",
+                #style_by="prefix",
                 cmap_name="pink_yellow_turquoise",
+                algorithm="HDBSCAN"
             )
 
             for taxonomy_name in map_label_fns:
@@ -118,10 +117,26 @@ def run_clustering_analysis(analysis_scenarios):
                     sort_clusters=False,
                 )
 
-            # ==================================================
             # K-means
-            # ==================================================
             print("Beginning k-means analysis...")
+            results = run_kmeans_model_selection_on_dataset(
+            right_arm=right_arm,
+            left_arm=left_arm,
+            lower_back=lower_back,
+            upper_back=upper_back,
+            left_fsr=left_fsr,
+            right_fsr=right_fsr,
+            expanded_fsr=True,
+            prefixes=prefixes,
+            feature_mode=feature_mode,
+            feature_window_length=window_length,
+            k_values=range(2, 13),
+            use_pca=True,
+            n_pca=0.95,
+            random_state=343,)
+
+            plot_kmeans_model_selection(results, filename=f"{scenario['id']}_kmeans_silhouette.pdf")
+            
 
             kmeans_df, _, _, _ = run_kmeans_on_dataset(
                 left_arm=left_arm,
@@ -135,7 +150,8 @@ def run_clustering_analysis(analysis_scenarios):
                 feature_mode=feature_mode,
                 feature_window_length=window_length,
                 n_clusters=4,
-                map_label_fn=None,   # IMPORTANT
+                map_label_fn=None, # IMPORTANT
+                random_state=343
             )
 
             kmeans_df = add_taxonomy_columns(kmeans_df, map_label_fns)
@@ -143,8 +159,9 @@ def run_clustering_analysis(analysis_scenarios):
             plot_pca_clusters(
                 kmeans_df,
                 save_path=f"cluster_plots/kmeans_{strat}_{scenario['id']}_clusters.pdf",
-                style_by="prefix",
+                #style_by="prefix",
                 cmap_name="pink_yellow_turquoise",
+                algorithm="Kmeans"
             )
 
             for taxonomy_name in map_label_fns:
@@ -163,12 +180,10 @@ def run_clustering_analysis(analysis_scenarios):
                     sort_clusters=False,
                 )
 
-            # ==================================================
             # Agglomerative
-            # ==================================================
             print("Beginning agglomerative clustering analysis...")
 
-            agglo_df, _, _, _, _ = run_agglomerative_on_dataset(
+            agglo_df, _, _, _, model = run_agglomerative_on_dataset(
                 left_arm=left_arm,
                 right_arm=right_arm,
                 lower_back=lower_back,
@@ -184,12 +199,15 @@ def run_clustering_analysis(analysis_scenarios):
             )
 
             agglo_df = add_taxonomy_columns(agglo_df, map_label_fns)
-
+            plot_agglomerative_dendrogram(model,
+                                          filename=f"{scenario['id']}_agglo_tree.pdf" ,                  
+            )
             plot_pca_clusters(
                 agglo_df,
                 save_path=f"cluster_plots/agglomerative_{strat}_{scenario['id']}_clusters.pdf",
-                style_by="prefix",
+                #style_by="prefix",
                 cmap_name="pink_yellow_turquoise",
+                algorithm="Agglomerative"
             )
 
             for taxonomy_name in map_label_fns:

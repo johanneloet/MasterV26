@@ -1,3 +1,8 @@
+# Original module from Alba Casanica
+# the fuctions aggregate_per_window and aggregate_over_window were added by Johanne for the specialization project
+
+
+
 """
 Module: fsr_features.py
 Purpose: Compute per-sample and per-repetition features from 4x4 FSR (force-sensing resistor) insole data,

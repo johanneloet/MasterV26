@@ -1,4 +1,5 @@
 # Script to run Leave one subject out cross validation with a selected classifier. Based on code from Maria!
+# modifications made for this m.sc. project
 
 import pandas as pd
 import numpy as np
@@ -24,6 +25,8 @@ import json
 from data_analysis.cf_matrix import make_confusion_matrix
 from pathlib import Path
 
+
+# The commented out code is the LOOCV pipeline adapted from Maria (Sylte 2025)
 # def run_loocv_with_pca(label_mapping=None, clf_name = "", window_size=8, norm_IMU=True, mean_fsr=False, hdr=False, class_version=1):
 #     feature_files = get_feture_paths(window_length_sec=window_size, norm_IMU=norm_IMU, mean_fsr=mean_fsr, hdr=hdr)
 #     test_ids = list(feature_files.keys())
@@ -562,15 +565,20 @@ def run_loocv_with_pca(
 
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
 
-    run_name = f"{clf_name}_{sensor_combo_scenario}_expanded{expanded_fsr}_class{class_version}_DC#DROPNEUTRAL"
+    run_name = f"{clf_name}_{sensor_combo_scenario}_expanded{expanded_fsr}_class{class_version}"
+    
+    if taxonomy_fn is not None:
+        cm_fontsize = 70
+    else:
+        cm_fontsize=43
 
     make_confusion_matrix(
         cf=cm,
         categories=labels,
         #title=f"{clf_name} Confusion Matrix",
-        savepath=f"./plots_use/{run_name}.pdf",
+        savepath=f"./final_conf_matrices/{run_name}_DC3_add_akso8_larger_font.pdf",
         color_code={},
-        fontsize=43
+        fontsize=cm_fontsize
     )
 
     #return all_accuracies
@@ -599,9 +607,11 @@ if __name__ == "__main__":
         left_arm=True,
         upper_back=True,
         lower_back=True,
+        right_fsr=False,
+        left_fsr=False,
         clf_name="NN",
         expanded_fsr=True,
-        taxonomy_fn=map_taxonomy_candidate_3,
+        taxonomy_fn=map_taxonomy_candidate_4,
         seg_strategy="Window3.5"
     )
 

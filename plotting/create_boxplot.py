@@ -250,7 +250,7 @@ def plot_sensor_ablation_boxplots_by_dc(
             loc="center left",
             bbox_to_anchor=(1.02, 0.5),
             ncol=1,
-            fontsize=8,
+            fontsize=10,
             markerscale=0.8,
             labelspacing=0.35,
             handletextpad=0.4,
@@ -272,7 +272,7 @@ def plot_sensor_ablation_boxplots_by_dc(
         print(f"Saved: {save_path}")
         
         
-def plot_svc_sensor_ablation_dc4_dc6_dc7(
+def plot_nn_sensor_ablation_dc4_dc6_dc7(
     csv_path="./results/loocv_summary_results_sensor_ablation.csv",
     output_dir="./results/sensor_ablation_boxplots",
     metric="f1",
@@ -289,7 +289,7 @@ def plot_svc_sensor_ablation_dc4_dc6_dc7(
     dc_order = ["DC4", "DC6", "DC7"]
 
     plot_df = perf[
-        (perf["classifier"] == "SVC")
+        (perf["classifier"] == "NN")
         & (perf["dataset_scenario"].isin(dc_order))
     ].copy()
 
@@ -397,6 +397,11 @@ def plot_svc_sensor_ablation_dc4_dc6_dc7(
             linestyle="--",
             linewidth=1,
         )
+    dc_to_experiment = {
+        'DC4':'LOOCV11',
+        'DC6': 'LOOCV13',
+        'DC7':'LOOCV14'
+    }
 
     start = 0
     for dc, count in zip(dc_order, dc_counts):
@@ -404,7 +409,7 @@ def plot_svc_sensor_ablation_dc4_dc6_dc7(
             ax.text(
                 start + (count - 1) / 2,
                 -0.22,
-                f"{dc} (SVC)",
+                f"{dc_to_experiment[dc]} (NN)",
                 ha="center",
                 va="top",
                 transform=ax.get_xaxis_transform(),
@@ -435,7 +440,7 @@ def plot_svc_sensor_ablation_dc4_dc6_dc7(
         loc="upper center",
         bbox_to_anchor=(0.5, -0.33),
         ncol=6,
-        fontsize=7,
+        fontsize=10,
         markerscale=0.8,
         labelspacing=0.4,
         handletextpad=0.3,
@@ -464,6 +469,8 @@ def plot_cross_domain_generalization_boxplot(
     os.makedirs(output_dir, exist_ok=True)
 
     perf = build_participant_df(csv_path).copy()
+    
+    perf["participant"] = perf["participant"].apply(map_participant_for_plot)
 
     dc_name_map = {
         "DC4": "CDG1",
@@ -491,6 +498,8 @@ def plot_cross_domain_generalization_boxplot(
     perf["plot_group"] = (
         perf["classifier"] + "_" + perf["training_dataset"]
     )
+    
+    
 
     plot_order = []
     separator_xs = []
@@ -592,7 +601,7 @@ def plot_cross_domain_generalization_boxplot(
         loc="center left",
         bbox_to_anchor=(1.02, 0.5),
         ncol=1,
-        fontsize=8,
+        fontsize=10,
         markerscale=0.8,
         labelspacing=0.35,
         handletextpad=0.4,
@@ -605,7 +614,7 @@ def plot_cross_domain_generalization_boxplot(
 
     save_path = os.path.join(
         output_dir,
-        f"cross_domain_generalization_{metric}_boxplot.pdf",
+        f"cross_domain_generalization_{metric}_boxplot_mixed_datasets.pdf",
     )
 
     plt.savefig(save_path, format="pdf", bbox_inches="tight")
@@ -695,10 +704,10 @@ def write_cross_domain_generalization_latex_table(
 
 
 if __name__ == "__main__":
-    plot_sensor_ablation_boxplots_by_dc(
-        csv_path="./results/loocv_summary_results_sensor_ablation_final.csv",
-        metric="f1",
-    )
-    plot_svc_sensor_ablation_dc4_dc6_dc7(csv_path="./results/loocv_summary_results_sensor_ablation_final.csv")
-    # plot_cross_domain_generalization_boxplot()
-    # write_cross_domain_generalization_latex_table()
+    # plot_sensor_ablation_boxplots_by_dc(
+    #     csv_path="./results/loocv_summary_results_sensor_ablation_final_final.csv",
+    #     metric="f1",
+    # )
+    plot_nn_sensor_ablation_dc4_dc6_dc7(csv_path="./results/loocv_summary_results_sensor_ablation_final_final.csv")
+    #plot_cross_domain_generalization_boxplot(csv_path=r"C:\Users\Bruker\MasterV26\results\mixed_dataset_experiment.csv")
+    #write_cross_domain_generalization_latex_table(csv_path=r"C:\Users\Bruker\MasterV26\results\mixed_dataset_experiment.csv", output_path=r"./results/mixed_training_aksowork_experiment.tex")

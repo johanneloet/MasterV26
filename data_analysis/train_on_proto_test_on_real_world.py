@@ -425,7 +425,7 @@ if __name__ == "__main__":
                 left_fsr=SC["left_fsr"],
                 right_fsr=SC["right_fsr"],
                 expanded_fsr=True,
-                taxonomy_fn=map_taxonomy_candidate_3,
+                taxonomy_fn=T_seg_opt["T_opt"],
                 seg_strategy=T_seg_opt["seg_opt"],
                 save_per_participant_metrics=True # true so we can perhaps make a boxplot for this too
             )

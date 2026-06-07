@@ -39,38 +39,30 @@ def drop_label(df, label_to_drop):
 
 
 def map_taxonomy_candidate_1(label, static_label=None):
-    print("label is", label)
 
     if contains_any(label, ["lying"]):
-        print("mapped to other")
         return "other"
 
     if contains_any(label, ["walk", "walking", "stairs", "stair", "ladder", "climbing", "climb"]):
-        print("mapped to locomotion")
         return "locomotion"
 
     if contains_any(label, ["push", "pull", "drag", "carry", "lift", "lifting"]):
-        print("mapped to handling")
         return "material_handling"
 
     if contains_any(label, [
         "lean", "leaning", "forward_lean", "sideways_lean",
         "backward_lean", "torso", "twist", "trunk", "squat", "bend", "bending"
     ]):
-        print("mapped to trunk movement")
         return "trunk_movement"
 
     if contains_any(label, [
         "hand", "hands", "arm", "arms", "shoulder", 
         "reach", "reaching"
     ]):
-        print("mapped to arm movement")
         return "arm_movement"
 
     if contains_any(label, ["standing", "sitting", "neutral", "idle", "resting"]):
-        print("mapped to neutral")
         return "neutral"
-    print("FALLBACK to other")
     return "other"
 
 
@@ -166,9 +158,6 @@ def map_taxonomy_candidate_4(label, static_label=None):
     """
     Candidate 4:
     static / intermediate / locomotion
-
-    Uses original label + static_label.
-    static_label overrides the original movement label.
     """
 
     if contains_any(label, ["lying"]):
@@ -182,3 +171,5 @@ def map_taxonomy_candidate_4(label, static_label=None):
         return "locomotion"
 
     return "intermediate"
+
+

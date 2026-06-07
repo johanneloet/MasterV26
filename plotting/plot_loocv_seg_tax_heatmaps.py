@@ -12,7 +12,7 @@ def select_optimal_taxonomy_cell(heatmap_values, dataset_scenario):
     - DC3:
         Use T2 if best T2 F1 >= 0.60.
         Otherwise use best T1.
-    - DC5, DC7:
+    - DC4, DC6, DC7:
         Use T2 if best T2 F1 >= 0.80.
         Otherwise use best T1.
     - Other scenarios:
@@ -42,7 +42,7 @@ def select_optimal_taxonomy_cell(heatmap_values, dataset_scenario):
 
         return best_for_taxonomy("T1")
 
-    if dataset_scenario in ["DC5", "DC7"]:
+    if dataset_scenario in ["DC4", "DC6", "DC7"]:
         candidate = best_for_taxonomy("T2")
         if candidate is not None and candidate[2] >= 0.80:
             return candidate
@@ -83,7 +83,7 @@ def plot_f1_heatmaps_by_classifier(
         dataset_scenarios = sorted(clf_df["dataset_scenario"].unique())
         n_dc = len(dataset_scenarios)
 
-        ncols = 4
+        ncols = 3
         nrows = int(np.ceil(n_dc / ncols))
 
         fig, axes = plt.subplots(
@@ -93,10 +93,20 @@ def plot_f1_heatmaps_by_classifier(
             squeeze=False,
         )
         seg_display_names = {
-            "Window2.5": "SEG1",
-            "Window3.5": "SEG2",
-            "Window5": "SEG3",
-            "Repetition3.5": "SEG4",
+            "Window2.5": "win2.5",
+            "Window3.5": "win3.5",
+            "Window5": "win3",
+            "Repetition3.5": "rep3.5",
+        }
+        
+        subplot_display_names = {
+            "DC1": "LOOCV1",
+            "DC2": "LOOCV2",
+            "DC3": "LOOCV3",
+            "DC4": "LOOCV4",
+            "DC5": "LOOCV5",
+            "DC6": "LOOCV6",
+            "DC7": "LOOCV7",
         }
 
         axes_flat = axes.flatten()
@@ -183,19 +193,15 @@ def plot_f1_heatmaps_by_classifier(
                 vmin=0,
                 vmax=1,
                 ax=ax,
-                annot_kws={"size": 14,  "color": "black",}
+                annot_kws={"size": 18,  "color": "black",}
             )
 
-            ax.set_title(dataset_scenario)
-            ax.set_xlabel("Taxonomy")
-            ax.set_ylabel("Segmentation")
-            
-            ax.set_title(dataset_scenario, fontsize=18)
-            ax.set_xlabel("Taxonomy", fontsize=14)
-            ax.set_ylabel("Segmentation", fontsize=14)
+            ax.set_title(subplot_display_names.get(dataset_scenario, None), fontsize=20)
+            ax.set_xlabel("Taxonomy", fontsize=18)
+            ax.set_ylabel("Segmentation", fontsize=18)
 
-            ax.tick_params(axis="x", labelsize=12)
-            ax.tick_params(axis="y", labelsize=12)
+            ax.tick_params(axis="x", labelsize=17)
+            ax.tick_params(axis="y", labelsize=17)
             
             if selected is not None:
                 for text in ax.texts:
@@ -209,7 +215,7 @@ def plot_f1_heatmaps_by_classifier(
 
                     if row_name == best_seg and col_name == best_tax:
                         text.set_fontweight("bold")
-                        text.set_fontsize(14)
+                        text.set_fontsize(18)
 
         for j in range(n_dc, len(axes_flat)):
             axes_flat[j].axis("off")
@@ -225,8 +231,8 @@ def plot_f1_heatmaps_by_classifier(
             pad=0.02,
         )
 
-        cbar.set_label("Mean F1", fontsize=14)
-        cbar.ax.tick_params(labelsize=12)
+        cbar.set_label("Mean F1", fontsize=18)
+        cbar.ax.tick_params(labelsize=14)
 
         fig.suptitle(f"{classifier} – F1 heatmaps by dataset scenario", fontsize=25)
         plt.tight_layout(rect=[0, 0, 0.85, 0.96])
@@ -250,10 +256,10 @@ def create_optimal_performance_latex_table(
     rows = []
 
     seg_display_names = {
-        "Window2.5": "SEG1",
-        "Window3.5": "SEG2",
-        "Window5": "SEG3",
-        "Repetition3.5": "SEG4",
+        "Window2.5": "win2.5",
+        "Window3.5": "win3.5",
+        "Window5": "win5",
+        "Repetition3.5": "rep3.5",
     }
 
     classifier_names = {
@@ -335,5 +341,5 @@ def create_optimal_performance_latex_table(
     return table_df
 
 if __name__ == "__main__":
-    plot_f1_heatmaps_by_classifier(classifiers=["NN", "SVC", "RFC"])
-    create_optimal_performance_latex_table()
+    plot_f1_heatmaps_by_classifier(csv_path = './results/FINALFINAL_LOOCV.csv',classifiers=["NN", "SVC", "RFC"])
+    create_optimal_performance_latex_table(csv_path = './results/FINALFINAL_LOOCV.csv')

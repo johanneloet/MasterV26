@@ -4,16 +4,11 @@ from pathlib import Path
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
-from sklearn.cluster import DBSCAN
 from sklearn.cluster import HDBSCAN
 
 from feature_extraction.get_paths import get_test_folder_paths
-import matplotlib.pyplot as plt
 
 from utils import drop_label
-from matplotlib.colors import LinearSegmentedColormap
 
 from plotting.cluster_plots import save_cluster_label_heatmap, plot_pca_clusters
 
@@ -170,8 +165,6 @@ def run_dbscan_on_dataset(
     feature_dfs = []
     for p in include_csvs:
         df = pd.read_csv(p)
-        print("COLUMNS")
-        print(df.columns)
         for col in df.columns:
             if "upper_back" in col.lower():
                 print(col)
@@ -179,11 +172,9 @@ def run_dbscan_on_dataset(
         filename = p.name
         test_id = filename.split(f"Features_")[1].split("_expanded")[0]
         test_id = "_".join(test_id.split("_")[1:])
-        print(test_id, "<- TEST ID")
 
         parts = test_id.split("_")
         prefix = "_".join(parts[:-1]) if len(parts) > 1 else test_id
-        print('prefix', prefix)
         df["prefix"] = prefix
         df["test_id"] = test_id
         feature_dfs.append(df)
@@ -192,10 +183,6 @@ def run_dbscan_on_dataset(
         raise ValueError("No feature files found for the requested configuration.")
 
     combined_features = pd.concat(feature_dfs, ignore_index=True)
-    print(combined_features)
-    print("####################")
-    print("COMB FEATS LEABELs")
-    print(combined_features['label'])
     combined_features['original_label'] = combined_features['label']
     # combined_features['label'] = combined_features.apply(
     # lambda row: map_label_fn(row["label"], row.get("static_label", None)),
@@ -212,7 +199,9 @@ def run_dbscan_on_dataset(
     ].copy()
 
     labels = combined_features["label"]
-
+    print("LEN LABELS", len(labels))
+    import time
+    time.sleep(5)
     static_labels = combined_features["static_label"]
     # combined_features['label'] = combined_features['original_label']
     combined_features.drop(columns=['original_label'])
@@ -313,26 +302,6 @@ if __name__ == "__main__":
         min_cluster_size=33
     )
 
-    interactive_pca_plot(
-    dbscan_df[["PC1", "PC2"]].to_numpy(),
-    dbscan_df["cluster"].to_numpy(),
-    dbscan_df["label"].to_numpy(),
-    )
+
     plot_pca_clusters(dbscan_df, save_path="cluster_plots/TESTPLOT.pdf",static_by="static_label")
 
-    counts = summarize_labels_in_clusters(dbscan_df)
-    ct_counts, ct_pct = cluster_label_crosstab(dbscan_df)
-    save_cluster_label_heatmap(
-    dbscan_df,
-    filename="dbscan_cluster_heatmap.png",
-    cluster_col="cluster",
-    label_col="label",
-    title="HDBSCAN: Cluster vs Label (%)",
-    map_label_fn=map_label_hierarchical,
-    drop_noise=False,   # keep -1 in plot
-    min_total_label_count=0,
-    sort_labels=False,
-    sort_clusters=False,
-    )
-
-  

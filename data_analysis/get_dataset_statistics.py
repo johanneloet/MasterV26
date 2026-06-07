@@ -132,6 +132,8 @@ rows = []
 for DC_id, prefixes in dataset_scenarios.items():
 
     for seg_strategy in segmentation_scenarios:
+        if DC_id == 'DC3' and seg_strategy == 'Repetition3.5':
+            continue
 
         feature_files = build_feature_files(
             prefixes=prefixes,
@@ -382,10 +384,10 @@ for dc, tax in selected_cases:
     ]
     
     seg_name_map = {
-    "Window2.5": "SEG1",
-    "Window3.5": "SEG2",
-    "Window5": "SEG3",
-    "Repetition3.5": "SEG4",
+    "Window2.5": "win2.5",
+    "Window3.5": "win3.5",
+    "Window5": "win5",
+    "Repetition3.5": "rep3.5",
     }
     pivot_counts.index = [
     seg_name_map.get(x, x)
@@ -409,8 +411,8 @@ for dc, tax in selected_cases:
     )
 
     #ax.set_title(f"Class distribution for {dc} using {tax}")
-    ax.set_xlabel("Segmentation strategy")
-    ax.set_ylabel("Class percentage (%)")
+    ax.set_xlabel("Segmentation strategy", fontsize=18)
+    ax.set_ylabel("Class percentage (%)", fontsize=18)
 
     #vertical legend next to plot
     ax.legend(
@@ -429,7 +431,7 @@ for dc, tax in selected_cases:
     # frameon=False
     # )
 
-    plt.xticks(rotation=30, ha="right")
+    plt.xticks(rotation=30, ha="right", fontsize=16)
 
     # annotate bars with raw sample counts
     for bar_group_idx, seg_name in enumerate(pivot_counts.index):
