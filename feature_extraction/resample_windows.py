@@ -54,9 +54,12 @@ def downsample_channel(df_channel, target_num_samples):
         x = pd.Series(x).interpolate(limit_direction="both").to_numpy()
 
     # Polyphase resample (anti-aliasing)
+    # print("downsampling")
     g = math.gcd(target_num_samples, n)
     up = target_num_samples // g
     down = n // g
+    # print("right before resample_poly, gdc is", g, 'up is', up, 'down is', down)
+
     y = signal.resample_poly(x, up, down, padtype="edge")
 
     # Ensure exact length

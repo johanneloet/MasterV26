@@ -5,3 +5,5 @@ scipy
 ipykernel
 scikit-learn
 black
+seaborn
+jinja2

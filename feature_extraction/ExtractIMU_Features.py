@@ -3,11 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import time
 
-"""
-from Maria_code.data_analysis.get_Time_Domain_features_of_signal import get_Time_Domain_features_of_signal
-from Maria_code.data_analysis.get_Freq_Domain_features_of_signal import get_Freq_Domain_features_of_signal
-"""
+# statement from Maria (Sylte, 2025):
 "Based on the bachelor students modification of Royas code"
+
+# The function extract_IMU_features_repetitons_based and extract_IMU_features_window_based are modifications
+# of Maria's code done by Johanne to enable the feature windows usedfor the M.Sc.
 
 from feature_extraction.get_Time_Domain_features_of_signal import (
     get_Time_Domain_features_of_signal,
@@ -17,542 +17,545 @@ from feature_extraction.get_Freq_Domain_features_of_signal import (
 )
 from feature_extraction.resample_windows import downsample_channel
 from feature_extraction.create_feature_windows import build_boundaries
+from feature_extraction.resample_old_imu_files import resample_imu_dataframe
+from feature_extraction.create_fixed_length_feature_windows import build_containers, generate_fixed_length_windows_centered
+from feature_extraction.label_static_transient import transient_score
 
 
-def ExtractIMU_Features(
-    imu_data,
-    sensor_name,
-    window_length,
-    norm_IMU,
-    fs,
-    HDR=False,
-    replace_acc_w_HDR=False,
-    time_only=False,
-    freq_only=False,
-):
-    if not isinstance(imu_data, pd.DataFrame):
-        imu_data = pd.read_csv(imu_data)
+# def ExtractIMU_Features(
+#     imu_data,
+#     sensor_name,
+#     window_length,
+#     norm_IMU,
+#     fs,
+#     HDR=False,
+#     replace_acc_w_HDR=False,
+#     time_only=False,
+#     freq_only=False,
+# ):
+#     if not isinstance(imu_data, pd.DataFrame):
+#         imu_data = pd.read_csv(imu_data)
 
-    if not HDR and replace_acc_w_HDR:
-        print(
-            "Trying to replace acceleration with HDR acceleration, but HDR flag is set to false. Set to True for desired beavior."
-        )
-        print(
-            "IMU feature extraction will continue with settings: HDR = False and replace_acc_w_HDR = False"
-        )
-        print("Stop feature extraction and change flags to fix this.")
+#     if not HDR and replace_acc_w_HDR:
+#         print(
+#             "Trying to replace acceleration with HDR acceleration, but HDR flag is set to false. Set to True for desired beavior."
+#         )
+#         print(
+#             "IMU feature extraction will continue with settings: HDR = False and replace_acc_w_HDR = False"
+#         )
+#         print("Stop feature extraction and change flags to fix this.")
 
-    """ EXTRACT COLUMNS """
-    time_data = imu_data["ReconstructedTime"]
+#     """ EXTRACT COLUMNS """
+#     time_data = imu_data["ReconstructedTime"]
 
-    accel_X = imu_data["Axl.X"]
-    accel_Y = imu_data["Axl.Y"]
-    accel_Z = imu_data["Axl.Z"]
+#     accel_X = imu_data["Axl.X"]
+#     accel_Y = imu_data["Axl.Y"]
+#     accel_Z = imu_data["Axl.Z"]
 
-    gyro_X = imu_data["Gyr.X"]
-    gyro_Y = imu_data["Gyr.Y"]
-    gyro_Z = imu_data["Gyr.Z"]
+#     gyro_X = imu_data["Gyr.X"]
+#     gyro_Y = imu_data["Gyr.Y"]
+#     gyro_Z = imu_data["Gyr.Z"]
 
-    mag_X = imu_data["Mag.X"]
-    mag_Y = imu_data["Mag.Y"]
-    mag_Z = imu_data["Mag.Z"]
+#     mag_X = imu_data["Mag.X"]
+#     mag_Y = imu_data["Mag.Y"]
+#     mag_Z = imu_data["Mag.Z"]
 
-    if HDR:
-        Hdr_X = imu_data["Hdr.X"]
-        Hdr_Y = imu_data["Hdr.Y"]
-        Hdr_Z = imu_data["Hdr.Z"]
+#     if HDR:
+#         Hdr_X = imu_data["Hdr.X"]
+#         Hdr_Y = imu_data["Hdr.Y"]
+#         Hdr_Z = imu_data["Hdr.Z"]
 
-    # Define a list to store features for each window
-    all_window_features = []
+#     # Define a list to store features for each window
+#     all_window_features = []
 
-    # Calculate the number of windows
-    num_samples = len(time_data)
-    num_windows = num_samples // window_length
-    print(f"Number of IMU windows: {num_windows}")
+#     # Calculate the number of windows
+#     num_samples = len(time_data)
+#     num_windows = num_samples // window_length
+#     print(f"Number of IMU windows: {num_windows}")
 
-    for i in range(num_windows):
-        # Define the start and end index for the window
-        start_idx = i * window_length
-        end_idx = start_idx + window_length
-        # print(f"Getting features from window {start_idx} to {end_idx}")
+#     for i in range(num_windows):
+#         # Define the start and end index for the window
+#         start_idx = i * window_length
+#         end_idx = start_idx + window_length
+#         # print(f"Getting features from window {start_idx} to {end_idx}"
 
-        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
-        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
-        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
-        # plt.title(f"{imu_data.iloc[start_idx]['label']}")
-        # plt.show()
-        if norm_IMU == True:
-            # Extract acceleration and gyroscope data from the IMU dataset
-            if replace_acc_w_HDR and HDR:
-                norm_gyro = np.sqrt(
-                    np.power(gyro_X, 2) + np.power(gyro_Y, 2) + np.power(gyro_Z, 2)
-                )
-                norm_mag = np.sqrt(
-                    np.power(mag_X, 2) + np.power(mag_Y, 2) + np.power(mag_Z, 2)
-                )
-                norm_hdr = np.sqrt(
-                    np.power(Hdr_X, 2) + np.power(Hdr_Y, 2) + np.power(Hdr_Z, 2)
-                )
+#         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
+#         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
+#         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
+#         # plt.title(f"{imu_data.iloc[start_idx]['label']}")
+#         # plt.show()
+#         if norm_IMU == True:
+#             # Extract acceleration and gyroscope data from the IMU dataset
+#             if replace_acc_w_HDR and HDR:
+#                 norm_gyro = np.sqrt(
+#                     np.power(gyro_X, 2) + np.power(gyro_Y, 2) + np.power(gyro_Z, 2)
+#                 )
+#                 norm_mag = np.sqrt(
+#                     np.power(mag_X, 2) + np.power(mag_Y, 2) + np.power(mag_Z, 2)
+#                 )
+#                 norm_hdr = np.sqrt(
+#                     np.power(Hdr_X, 2) + np.power(Hdr_Y, 2) + np.power(Hdr_Z, 2)
+#                 )
 
-                window_gyro_Norm = norm_gyro[start_idx:end_idx]
-                window_mag_Norm = norm_mag[start_idx:end_idx]
-                window_hdr_Norm = norm_hdr[start_idx:end_idx]
+#                 window_gyro_Norm = norm_gyro[start_idx:end_idx]
+#                 window_mag_Norm = norm_mag[start_idx:end_idx]
+#                 window_hdr_Norm = norm_hdr[start_idx:end_idx]
 
-                window_features_gyro_Norm_Time = get_Time_Domain_features_of_signal(
-                    window_gyro_Norm, f"gyro_Norm_{sensor_name}"
-                )
-                window_features_mag_Norm_Time = get_Time_Domain_features_of_signal(
-                    window_mag_Norm, f"mag_Norm_{sensor_name}"
-                )
-                window_features_hdr_Norm_Time = get_Time_Domain_features_of_signal(
-                    window_hdr_Norm, f"hdr_Norm_{sensor_name}"
-                )
+#                 window_features_gyro_Norm_Time = get_Time_Domain_features_of_signal(
+#                     window_gyro_Norm, f"gyro_Norm_{sensor_name}"
+#                 )
+#                 window_features_mag_Norm_Time = get_Time_Domain_features_of_signal(
+#                     window_mag_Norm, f"mag_Norm_{sensor_name}"
+#                 )
+#                 window_features_hdr_Norm_Time = get_Time_Domain_features_of_signal(
+#                     window_hdr_Norm, f"hdr_Norm_{sensor_name}"
+#                 )
 
-                window_features_gyro_Norm_Freq = get_Freq_Domain_features_of_signal(
-                    window_gyro_Norm, f"_gyro_Norm_{sensor_name}", fs
-                )
-                window_features_mag_Norm_Freq = get_Freq_Domain_features_of_signal(
-                    window_mag_Norm, f"mag_Norm_{sensor_name}", fs
-                )
-                window_features_hdr_Norm_Freq = get_Freq_Domain_features_of_signal(
-                    window_hdr_Norm, f"hdr_Norm_{sensor_name}", fs
-                )
+#                 window_features_gyro_Norm_Freq = get_Freq_Domain_features_of_signal(
+#                     window_gyro_Norm, f"_gyro_Norm_{sensor_name}", fs
+#                 )
+#                 window_features_mag_Norm_Freq = get_Freq_Domain_features_of_signal(
+#                     window_mag_Norm, f"mag_Norm_{sensor_name}", fs
+#                 )
+#                 window_features_hdr_Norm_Freq = get_Freq_Domain_features_of_signal(
+#                     window_hdr_Norm, f"hdr_Norm_{sensor_name}", fs
+#                 )
 
-                if time_only:
-                    window_features = {
-                        **window_features_gyro_Norm_Time,
-                        **window_features_gyro_Norm_Freq,
-                        **window_features_mag_Norm_Time,
-                    }
-                elif freq_only:
-                    window_features = {
-                        **window_features_mag_Norm_Freq,
-                        **window_features_hdr_Norm_Time,
-                        **window_features_hdr_Norm_Freq,
-                    }
-                else:
-                    window_features = {
-                        **window_features_gyro_Norm_Time,
-                        **window_features_gyro_Norm_Freq,
-                        **window_features_mag_Norm_Time,
-                        **window_features_mag_Norm_Freq,
-                        **window_features_hdr_Norm_Time,
-                        **window_features_hdr_Norm_Freq,
-                    }
+#                 if time_only:
+#                     window_features = {
+#                         **window_features_gyro_Norm_Time,
+#                         **window_features_gyro_Norm_Freq,
+#                         **window_features_mag_Norm_Time,
+#                     }
+#                 elif freq_only:
+#                     window_features = {
+#                         **window_features_mag_Norm_Freq,
+#                         **window_features_hdr_Norm_Time,
+#                         **window_features_hdr_Norm_Freq,
+#                     }
+#                 else:
+#                     window_features = {
+#                         **window_features_gyro_Norm_Time,
+#                         **window_features_gyro_Norm_Freq,
+#                         **window_features_mag_Norm_Time,
+#                         **window_features_mag_Norm_Freq,
+#                         **window_features_hdr_Norm_Time,
+#                         **window_features_hdr_Norm_Freq,
+#                     }
 
-            else:
-                norm_accel = np.sqrt(
-                    np.power(accel_X, 2) + np.power(accel_Y, 2) + np.power(accel_Z, 2)
-                )
-                norm_gyro = np.sqrt(
-                    np.power(gyro_X, 2) + np.power(gyro_Y, 2) + np.power(gyro_Z, 2)
-                )
-                norm_mag = np.sqrt(
-                    np.power(mag_X, 2) + np.power(mag_Y, 2) + np.power(mag_Z, 2)
-                )
-                if HDR:
-                    norm_hdr = np.sqrt(
-                        np.power(Hdr_X, 2) + np.power(Hdr_Y, 2) + np.power(Hdr_Z, 2)
-                    )
+#             else:
+#                 norm_accel = np.sqrt(
+#                     np.power(accel_X, 2) + np.power(accel_Y, 2) + np.power(accel_Z, 2)
+#                 )
+#                 norm_gyro = np.sqrt(
+#                     np.power(gyro_X, 2) + np.power(gyro_Y, 2) + np.power(gyro_Z, 2)
+#                 )
+#                 norm_mag = np.sqrt(
+#                     np.power(mag_X, 2) + np.power(mag_Y, 2) + np.power(mag_Z, 2)
+#                 )
+#                 if HDR:
+#                     norm_hdr = np.sqrt(
+#                         np.power(Hdr_X, 2) + np.power(Hdr_Y, 2) + np.power(Hdr_Z, 2)
+#                     )
 
-                # Remove gravity:
-                """
-                g_constant = np.mean(norm_acceleration)
-                # print(f"g constant: {g_constant}")
-                gravless_norm = np.subtract(norm_acceleration, g_constant)  
-                window_accel_Norm = gravless_norm[start_idx:end_idx]
-                """
+#                 # Remove gravity:
+#                 """
+#                 g_constant = np.mean(norm_acceleration)
+#                 # print(f"g constant: {g_constant}")
+#                 gravless_norm = np.subtract(norm_acceleration, g_constant)  
+#                 window_accel_Norm = gravless_norm[start_idx:end_idx]
+#                 """
 
-                window_accel_Norm = norm_accel[start_idx:end_idx]
-                window_gyro_Norm = norm_gyro[start_idx:end_idx]
-                window_mag_Norm = norm_mag[start_idx:end_idx]
-                if HDR:
-                    window_hdr_Norm = norm_hdr[start_idx:end_idx]
+#                 window_accel_Norm = norm_accel[start_idx:end_idx]
+#                 window_gyro_Norm = norm_gyro[start_idx:end_idx]
+#                 window_mag_Norm = norm_mag[start_idx:end_idx]
+#                 if HDR:
+#                     window_hdr_Norm = norm_hdr[start_idx:end_idx]
 
-                window_features_accel_Norm_Time = get_Time_Domain_features_of_signal(
-                    window_accel_Norm, f"accel_Norm_{sensor_name}"
-                )
-                window_features_gyro_Norm_Time = get_Time_Domain_features_of_signal(
-                    window_gyro_Norm, f"gyro_Norm_{sensor_name}"
-                )
-                window_features_mag_Norm_Time = get_Time_Domain_features_of_signal(
-                    window_mag_Norm, f"mag_Norm_{sensor_name}"
-                )
-                if HDR:
-                    window_features_hdr_Norm_Time = get_Time_Domain_features_of_signal(
-                        window_hdr_Norm, f"hdr_Norm_{sensor_name}"
-                    )
+#                 window_features_accel_Norm_Time = get_Time_Domain_features_of_signal(
+#                     window_accel_Norm, f"accel_Norm_{sensor_name}"
+#                 )
+#                 window_features_gyro_Norm_Time = get_Time_Domain_features_of_signal(
+#                     window_gyro_Norm, f"gyro_Norm_{sensor_name}"
+#                 )
+#                 window_features_mag_Norm_Time = get_Time_Domain_features_of_signal(
+#                     window_mag_Norm, f"mag_Norm_{sensor_name}"
+#                 )
+#                 if HDR:
+#                     window_features_hdr_Norm_Time = get_Time_Domain_features_of_signal(
+#                         window_hdr_Norm, f"hdr_Norm_{sensor_name}"
+#                     )
 
-                window_features_accel_Norm_Freq = get_Freq_Domain_features_of_signal(
-                    window_accel_Norm, f"accel_Norm_{sensor_name}", fs
-                )
-                window_features_gyro_Norm_Freq = get_Freq_Domain_features_of_signal(
-                    window_gyro_Norm, f"_gyro_Norm_{sensor_name}", fs
-                )
-                window_features_mag_Norm_Freq = get_Freq_Domain_features_of_signal(
-                    window_mag_Norm, f"mag_Norm_{sensor_name}", fs
-                )
-                if HDR:
-                    window_features_hdr_Norm_Freq = get_Freq_Domain_features_of_signal(
-                        window_hdr_Norm, f"hdr_Norm_{sensor_name}", fs
-                    )
+#                 window_features_accel_Norm_Freq = get_Freq_Domain_features_of_signal(
+#                     window_accel_Norm, f"accel_Norm_{sensor_name}", fs
+#                 )
+#                 window_features_gyro_Norm_Freq = get_Freq_Domain_features_of_signal(
+#                     window_gyro_Norm, f"_gyro_Norm_{sensor_name}", fs
+#                 )
+#                 window_features_mag_Norm_Freq = get_Freq_Domain_features_of_signal(
+#                     window_mag_Norm, f"mag_Norm_{sensor_name}", fs
+#                 )
+#                 if HDR:
+#                     window_features_hdr_Norm_Freq = get_Freq_Domain_features_of_signal(
+#                         window_hdr_Norm, f"hdr_Norm_{sensor_name}", fs
+#                     )
 
-                ## merge all
-                if not HDR:
-                    window_features = {
-                        **window_features_accel_Norm_Time,
-                        **window_features_accel_Norm_Freq,
-                        **window_features_gyro_Norm_Time,
-                        **window_features_gyro_Norm_Freq,
-                        **window_features_mag_Norm_Time,
-                        **window_features_mag_Norm_Freq,
-                    }
-                if HDR:
-                    window_features = {
-                        **window_features_accel_Norm_Time,
-                        **window_features_accel_Norm_Freq,
-                        **window_features_gyro_Norm_Time,
-                        **window_features_gyro_Norm_Freq,
-                        **window_features_mag_Norm_Time,
-                        **window_features_mag_Norm_Freq,
-                        **window_features_hdr_Norm_Time,
-                        **window_features_hdr_Norm_Freq,
-                    }
+#                 ## merge all
+#                 if not HDR:
+#                     window_features = {
+#                         **window_features_accel_Norm_Time,
+#                         **window_features_accel_Norm_Freq,
+#                         **window_features_gyro_Norm_Time,
+#                         **window_features_gyro_Norm_Freq,
+#                         **window_features_mag_Norm_Time,
+#                         **window_features_mag_Norm_Freq,
+#                     }
+#                 if HDR:
+#                     window_features = {
+#                         **window_features_accel_Norm_Time,
+#                         **window_features_accel_Norm_Freq,
+#                         **window_features_gyro_Norm_Time,
+#                         **window_features_gyro_Norm_Freq,
+#                         **window_features_mag_Norm_Time,
+#                         **window_features_mag_Norm_Freq,
+#                         **window_features_hdr_Norm_Time,
+#                         **window_features_hdr_Norm_Freq,
+#                     }
 
-        if norm_IMU == False:
-            if HDR and replace_acc_w_HDR:
-                window_gyro_X = gyro_X[start_idx:end_idx]
-                window_gyro_Y = gyro_Y[start_idx:end_idx]
-                window_gyro_Z = gyro_Z[start_idx:end_idx]
+#         if norm_IMU == False:
+#             if HDR and replace_acc_w_HDR:
+#                 window_gyro_X = gyro_X[start_idx:end_idx]
+#                 window_gyro_Y = gyro_Y[start_idx:end_idx]
+#                 window_gyro_Z = gyro_Z[start_idx:end_idx]
 
-                window_mag_X = mag_X[start_idx:end_idx]
-                window_mag_Y = mag_Y[start_idx:end_idx]
-                window_mag_Z = mag_Z[start_idx:end_idx]
+#                 window_mag_X = mag_X[start_idx:end_idx]
+#                 window_mag_Y = mag_Y[start_idx:end_idx]
+#                 window_mag_Z = mag_Z[start_idx:end_idx]
 
-                window_hdr_X = Hdr_X[start_idx:end_idx]
-                window_hdr_Y = Hdr_Y[start_idx:end_idx]
-                window_hdr_Z = Hdr_Z[start_idx:end_idx]
+#                 window_hdr_X = Hdr_X[start_idx:end_idx]
+#                 window_hdr_Y = Hdr_Y[start_idx:end_idx]
+#                 window_hdr_Z = Hdr_Z[start_idx:end_idx]
 
-                window_features_gyro_X_Time = get_Time_Domain_features_of_signal(
-                    window_gyro_X, f"gyro_X_{sensor_name}"
-                )
-                window_features_gyro_Y_Time = get_Time_Domain_features_of_signal(
-                    window_gyro_Y, f"gyro_Y_{sensor_name}"
-                )
-                window_features_gyro_Z_Time = get_Time_Domain_features_of_signal(
-                    window_gyro_Z, f"gyro_Z_{sensor_name}"
-                )
+#                 window_features_gyro_X_Time = get_Time_Domain_features_of_signal(
+#                     window_gyro_X, f"gyro_X_{sensor_name}"
+#                 )
+#                 window_features_gyro_Y_Time = get_Time_Domain_features_of_signal(
+#                     window_gyro_Y, f"gyro_Y_{sensor_name}"
+#                 )
+#                 window_features_gyro_Z_Time = get_Time_Domain_features_of_signal(
+#                     window_gyro_Z, f"gyro_Z_{sensor_name}"
+#                 )
 
-                window_features_mag_X_Time = get_Time_Domain_features_of_signal(
-                    window_mag_X, f"mag_X_{sensor_name}"
-                )
-                window_features_mag_Y_Time = get_Time_Domain_features_of_signal(
-                    window_mag_Y, f"mag_Y_{sensor_name}"
-                )
-                window_features_mag_Z_Time = get_Time_Domain_features_of_signal(
-                    window_mag_Z, f"mag_Z_{sensor_name}"
-                )
+#                 window_features_mag_X_Time = get_Time_Domain_features_of_signal(
+#                     window_mag_X, f"mag_X_{sensor_name}"
+#                 )
+#                 window_features_mag_Y_Time = get_Time_Domain_features_of_signal(
+#                     window_mag_Y, f"mag_Y_{sensor_name}"
+#                 )
+#                 window_features_mag_Z_Time = get_Time_Domain_features_of_signal(
+#                     window_mag_Z, f"mag_Z_{sensor_name}"
+#                 )
 
-                window_features_hdr_X_Time = get_Time_Domain_features_of_signal(
-                    window_hdr_X, f"hdr_X_{sensor_name}"
-                )
-                window_features_hdr_Y_Time = get_Time_Domain_features_of_signal(
-                    window_hdr_Y, f"hdr_Y_{sensor_name}"
-                )
-                window_features_hdr_Z_Time = get_Time_Domain_features_of_signal(
-                    window_hdr_Z, f"hdr_Z_{sensor_name}"
-                )
+#                 window_features_hdr_X_Time = get_Time_Domain_features_of_signal(
+#                     window_hdr_X, f"hdr_X_{sensor_name}"
+#                 )
+#                 window_features_hdr_Y_Time = get_Time_Domain_features_of_signal(
+#                     window_hdr_Y, f"hdr_Y_{sensor_name}"
+#                 )
+#                 window_features_hdr_Z_Time = get_Time_Domain_features_of_signal(
+#                     window_hdr_Z, f"hdr_Z_{sensor_name}"
+#                 )
 
-                window_features_gyro_X_Freq = get_Freq_Domain_features_of_signal(
-                    window_gyro_X, f"gyro_X_{sensor_name}", fs
-                )
-                window_features_gyro_Y_Freq = get_Freq_Domain_features_of_signal(
-                    window_gyro_Y, f"gyro_Y_{sensor_name}", fs
-                )
-                window_features_gyro_Z_Freq = get_Freq_Domain_features_of_signal(
-                    window_gyro_Z, f"gyro_Z_{sensor_name}", fs
-                )
+#                 window_features_gyro_X_Freq = get_Freq_Domain_features_of_signal(
+#                     window_gyro_X, f"gyro_X_{sensor_name}", fs
+#                 )
+#                 window_features_gyro_Y_Freq = get_Freq_Domain_features_of_signal(
+#                     window_gyro_Y, f"gyro_Y_{sensor_name}", fs
+#                 )
+#                 window_features_gyro_Z_Freq = get_Freq_Domain_features_of_signal(
+#                     window_gyro_Z, f"gyro_Z_{sensor_name}", fs
+#                 )
 
-                window_features_mag_X_Freq = get_Freq_Domain_features_of_signal(
-                    window_mag_X, f"mag_X_{sensor_name}", fs
-                )
-                window_features_mag_Y_Freq = get_Freq_Domain_features_of_signal(
-                    window_mag_Y, f"mag_Y_{sensor_name}", fs
-                )
-                window_features_mag_Z_Freq = get_Freq_Domain_features_of_signal(
-                    window_mag_Z, f"mag_Z_{sensor_name}", fs
-                )
+#                 window_features_mag_X_Freq = get_Freq_Domain_features_of_signal(
+#                     window_mag_X, f"mag_X_{sensor_name}", fs
+#                 )
+#                 window_features_mag_Y_Freq = get_Freq_Domain_features_of_signal(
+#                     window_mag_Y, f"mag_Y_{sensor_name}", fs
+#                 )
+#                 window_features_mag_Z_Freq = get_Freq_Domain_features_of_signal(
+#                     window_mag_Z, f"mag_Z_{sensor_name}", fs
+#                 )
 
-                window_features_hdr_X_Freq = get_Freq_Domain_features_of_signal(
-                    window_hdr_X, f"hdr_X_{sensor_name}", fs
-                )
-                window_features_hdr_Y_Freq = get_Freq_Domain_features_of_signal(
-                    window_hdr_Y, f"hdr_Y_{sensor_name}", fs
-                )
-                window_features_hdr_Z_Freq = get_Freq_Domain_features_of_signal(
-                    window_hdr_Z, f"hdr_Z_{sensor_name}", fs
-                )
+#                 window_features_hdr_X_Freq = get_Freq_Domain_features_of_signal(
+#                     window_hdr_X, f"hdr_X_{sensor_name}", fs
+#                 )
+#                 window_features_hdr_Y_Freq = get_Freq_Domain_features_of_signal(
+#                     window_hdr_Y, f"hdr_Y_{sensor_name}", fs
+#                 )
+#                 window_features_hdr_Z_Freq = get_Freq_Domain_features_of_signal(
+#                     window_hdr_Z, f"hdr_Z_{sensor_name}", fs
+#                 )
 
-                if time_only:
-                    window_features = {
-                        **window_features_gyro_X_Time,
-                        **window_features_gyro_Y_Time,
-                        **window_features_gyro_Z_Time,
-                        **window_features_mag_X_Time,
-                        **window_features_mag_Y_Time,
-                        **window_features_mag_Z_Time,
-                        **window_features_hdr_X_Time,
-                        **window_features_hdr_Y_Time,
-                        **window_features_hdr_Z_Time,
-                    }
-                elif freq_only:
-                    window_features = {
-                        **window_features_gyro_X_Freq,
-                        **window_features_gyro_Y_Freq,
-                        **window_features_gyro_Z_Freq,
-                        **window_features_mag_X_Freq,
-                        **window_features_mag_Y_Freq,
-                        **window_features_mag_Z_Freq,
-                        **window_features_hdr_X_Freq,
-                        **window_features_hdr_Y_Freq,
-                        **window_features_hdr_Z_Freq,
-                    }
+#                 if time_only:
+#                     window_features = {
+#                         **window_features_gyro_X_Time,
+#                         **window_features_gyro_Y_Time,
+#                         **window_features_gyro_Z_Time,
+#                         **window_features_mag_X_Time,
+#                         **window_features_mag_Y_Time,
+#                         **window_features_mag_Z_Time,
+#                         **window_features_hdr_X_Time,
+#                         **window_features_hdr_Y_Time,
+#                         **window_features_hdr_Z_Time,
+#                     }
+#                 elif freq_only:
+#                     window_features = {
+#                         **window_features_gyro_X_Freq,
+#                         **window_features_gyro_Y_Freq,
+#                         **window_features_gyro_Z_Freq,
+#                         **window_features_mag_X_Freq,
+#                         **window_features_mag_Y_Freq,
+#                         **window_features_mag_Z_Freq,
+#                         **window_features_hdr_X_Freq,
+#                         **window_features_hdr_Y_Freq,
+#                         **window_features_hdr_Z_Freq,
+#                     }
 
-                else:
-                    window_features = {
-                        **window_features_gyro_X_Time,
-                        **window_features_gyro_Y_Time,
-                        **window_features_gyro_Z_Time,
-                        **window_features_gyro_X_Freq,
-                        **window_features_gyro_Y_Freq,
-                        **window_features_gyro_Z_Freq,
-                        **window_features_mag_X_Time,
-                        **window_features_mag_Y_Time,
-                        **window_features_mag_Z_Time,
-                        **window_features_mag_X_Freq,
-                        **window_features_mag_Y_Freq,
-                        **window_features_mag_Z_Freq,
-                        **window_features_hdr_X_Time,
-                        **window_features_hdr_Y_Time,
-                        **window_features_hdr_Z_Time,
-                        **window_features_hdr_X_Freq,
-                        **window_features_hdr_Y_Freq,
-                        **window_features_hdr_Z_Freq,
-                    }
+#                 else:
+#                     window_features = {
+#                         **window_features_gyro_X_Time,
+#                         **window_features_gyro_Y_Time,
+#                         **window_features_gyro_Z_Time,
+#                         **window_features_gyro_X_Freq,
+#                         **window_features_gyro_Y_Freq,
+#                         **window_features_gyro_Z_Freq,
+#                         **window_features_mag_X_Time,
+#                         **window_features_mag_Y_Time,
+#                         **window_features_mag_Z_Time,
+#                         **window_features_mag_X_Freq,
+#                         **window_features_mag_Y_Freq,
+#                         **window_features_mag_Z_Freq,
+#                         **window_features_hdr_X_Time,
+#                         **window_features_hdr_Y_Time,
+#                         **window_features_hdr_Z_Time,
+#                         **window_features_hdr_X_Freq,
+#                         **window_features_hdr_Y_Freq,
+#                         **window_features_hdr_Z_Freq,
+#                     }
 
-            else:
-                window_accel_X = accel_X[start_idx:end_idx]
-                window_accel_Y = accel_Y[start_idx:end_idx]
-                window_accel_Z = accel_Z[start_idx:end_idx]
+#             else:
+#                 window_accel_X = accel_X[start_idx:end_idx]
+#                 window_accel_Y = accel_Y[start_idx:end_idx]
+#                 window_accel_Z = accel_Z[start_idx:end_idx]
 
-                window_gyro_X = gyro_X[start_idx:end_idx]
-                window_gyro_Y = gyro_Y[start_idx:end_idx]
-                window_gyro_Z = gyro_Z[start_idx:end_idx]
+#                 window_gyro_X = gyro_X[start_idx:end_idx]
+#                 window_gyro_Y = gyro_Y[start_idx:end_idx]
+#                 window_gyro_Z = gyro_Z[start_idx:end_idx]
 
-                window_mag_X = mag_X[start_idx:end_idx]
-                window_mag_Y = mag_Y[start_idx:end_idx]
-                window_mag_Z = mag_Z[start_idx:end_idx]
+#                 window_mag_X = mag_X[start_idx:end_idx]
+#                 window_mag_Y = mag_Y[start_idx:end_idx]
+#                 window_mag_Z = mag_Z[start_idx:end_idx]
 
-                if HDR:
-                    window_hdr_X = Hdr_X[start_idx:end_idx]
-                    window_hdr_Y = Hdr_Y[start_idx:end_idx]
-                    window_hdr_Z = Hdr_Z[start_idx:end_idx]
+#                 if HDR:
+#                     window_hdr_X = Hdr_X[start_idx:end_idx]
+#                     window_hdr_Y = Hdr_Y[start_idx:end_idx]
+#                     window_hdr_Z = Hdr_Z[start_idx:end_idx]
 
-                window_features_accel_X_Time = get_Time_Domain_features_of_signal(
-                    window_accel_X, f"accel_X_{sensor_name}"
-                )
-                window_features_accel_Y_Time = get_Time_Domain_features_of_signal(
-                    window_accel_Y, f"accel_Y_{sensor_name}"
-                )
-                window_features_accel_Z_Time = get_Time_Domain_features_of_signal(
-                    window_accel_Z, f"accel_Z_{sensor_name}"
-                )
+#                 window_features_accel_X_Time = get_Time_Domain_features_of_signal(
+#                     window_accel_X, f"accel_X_{sensor_name}"
+#                 )
+#                 window_features_accel_Y_Time = get_Time_Domain_features_of_signal(
+#                     window_accel_Y, f"accel_Y_{sensor_name}"
+#                 )
+#                 window_features_accel_Z_Time = get_Time_Domain_features_of_signal(
+#                     window_accel_Z, f"accel_Z_{sensor_name}"
+#                 )
 
-                window_features_gyro_X_Time = get_Time_Domain_features_of_signal(
-                    window_gyro_X, f"gyro_X_{sensor_name}"
-                )
-                window_features_gyro_Y_Time = get_Time_Domain_features_of_signal(
-                    window_gyro_Y, f"gyro_Y_{sensor_name}"
-                )
-                window_features_gyro_Z_Time = get_Time_Domain_features_of_signal(
-                    window_gyro_Z, f"gyro_Z_{sensor_name}"
-                )
+#                 window_features_gyro_X_Time = get_Time_Domain_features_of_signal(
+#                     window_gyro_X, f"gyro_X_{sensor_name}"
+#                 )
+#                 window_features_gyro_Y_Time = get_Time_Domain_features_of_signal(
+#                     window_gyro_Y, f"gyro_Y_{sensor_name}"
+#                 )
+#                 window_features_gyro_Z_Time = get_Time_Domain_features_of_signal(
+#                     window_gyro_Z, f"gyro_Z_{sensor_name}"
+#                 )
 
-                window_features_mag_X_Time = get_Time_Domain_features_of_signal(
-                    window_mag_X, f"mag_X_{sensor_name}"
-                )
-                window_features_mag_Y_Time = get_Time_Domain_features_of_signal(
-                    window_mag_Y, f"mag_Y_{sensor_name}"
-                )
-                window_features_mag_Z_Time = get_Time_Domain_features_of_signal(
-                    window_mag_Z, f"mag_Z_{sensor_name}"
-                )
+#                 window_features_mag_X_Time = get_Time_Domain_features_of_signal(
+#                     window_mag_X, f"mag_X_{sensor_name}"
+#                 )
+#                 window_features_mag_Y_Time = get_Time_Domain_features_of_signal(
+#                     window_mag_Y, f"mag_Y_{sensor_name}"
+#                 )
+#                 window_features_mag_Z_Time = get_Time_Domain_features_of_signal(
+#                     window_mag_Z, f"mag_Z_{sensor_name}"
+#                 )
 
-                if HDR:
-                    window_features_hdr_X_Time = get_Time_Domain_features_of_signal(
-                        window_hdr_X, f"hdr_X_{sensor_name}"
-                    )
-                    window_features_hdr_Y_Time = get_Time_Domain_features_of_signal(
-                        window_hdr_Y, f"hdr_Y_{sensor_name}"
-                    )
-                    window_features_hdr_Z_Time = get_Time_Domain_features_of_signal(
-                        window_hdr_Z, f"hdr_Z_{sensor_name}"
-                    )
+#                 if HDR:
+#                     window_features_hdr_X_Time = get_Time_Domain_features_of_signal(
+#                         window_hdr_X, f"hdr_X_{sensor_name}"
+#                     )
+#                     window_features_hdr_Y_Time = get_Time_Domain_features_of_signal(
+#                         window_hdr_Y, f"hdr_Y_{sensor_name}"
+#                     )
+#                     window_features_hdr_Z_Time = get_Time_Domain_features_of_signal(
+#                         window_hdr_Z, f"hdr_Z_{sensor_name}"
+#                     )
 
-                window_features_accel_X_Freq = get_Freq_Domain_features_of_signal(
-                    window_accel_X, f"accel_X_{sensor_name}", fs
-                )
-                window_features_accel_Y_Freq = get_Freq_Domain_features_of_signal(
-                    window_accel_Y, f"accel_Y_{sensor_name}", fs
-                )
-                window_features_accel_Z_Freq = get_Freq_Domain_features_of_signal(
-                    window_accel_Z, f"accel_Z_{sensor_name}", fs
-                )
+#                 window_features_accel_X_Freq = get_Freq_Domain_features_of_signal(
+#                     window_accel_X, f"accel_X_{sensor_name}", fs
+#                 )
+#                 window_features_accel_Y_Freq = get_Freq_Domain_features_of_signal(
+#                     window_accel_Y, f"accel_Y_{sensor_name}", fs
+#                 )
+#                 window_features_accel_Z_Freq = get_Freq_Domain_features_of_signal(
+#                     window_accel_Z, f"accel_Z_{sensor_name}", fs
+#                 )
 
-                window_features_gyro_X_Freq = get_Freq_Domain_features_of_signal(
-                    window_gyro_X, f"gyro_X_{sensor_name}", fs
-                )
-                window_features_gyro_Y_Freq = get_Freq_Domain_features_of_signal(
-                    window_gyro_Y, f"gyro_Y_{sensor_name}", fs
-                )
-                window_features_gyro_Z_Freq = get_Freq_Domain_features_of_signal(
-                    window_gyro_Z, f"gyro_Z_{sensor_name}", fs
-                )
+#                 window_features_gyro_X_Freq = get_Freq_Domain_features_of_signal(
+#                     window_gyro_X, f"gyro_X_{sensor_name}", fs
+#                 )
+#                 window_features_gyro_Y_Freq = get_Freq_Domain_features_of_signal(
+#                     window_gyro_Y, f"gyro_Y_{sensor_name}", fs
+#                 )
+#                 window_features_gyro_Z_Freq = get_Freq_Domain_features_of_signal(
+#                     window_gyro_Z, f"gyro_Z_{sensor_name}", fs
+#                 )
 
-                window_features_mag_X_Freq = get_Freq_Domain_features_of_signal(
-                    window_mag_X, f"mag_X_{sensor_name}", fs
-                )
-                window_features_mag_Y_Freq = get_Freq_Domain_features_of_signal(
-                    window_mag_Y, f"mag_Y_{sensor_name}", fs
-                )
-                window_features_mag_Z_Freq = get_Freq_Domain_features_of_signal(
-                    window_mag_Z, f"mag_Z_{sensor_name}", fs
-                )
+#                 window_features_mag_X_Freq = get_Freq_Domain_features_of_signal(
+#                     window_mag_X, f"mag_X_{sensor_name}", fs
+#                 )
+#                 window_features_mag_Y_Freq = get_Freq_Domain_features_of_signal(
+#                     window_mag_Y, f"mag_Y_{sensor_name}", fs
+#                 )
+#                 window_features_mag_Z_Freq = get_Freq_Domain_features_of_signal(
+#                     window_mag_Z, f"mag_Z_{sensor_name}", fs
+#                 )
 
-                if HDR:
-                    window_features_hdr_X_Freq = get_Freq_Domain_features_of_signal(
-                        window_hdr_X, f"hdr_X_{sensor_name}", fs
-                    )
-                    window_features_hdr_Y_Freq = get_Freq_Domain_features_of_signal(
-                        window_hdr_Y, f"hdr_Y_{sensor_name}", fs
-                    )
-                    window_features_hdr_Z_Freq = get_Freq_Domain_features_of_signal(
-                        window_hdr_Z, f"hdr_Z_{sensor_name}", fs
-                    )
+#                 if HDR:
+#                     window_features_hdr_X_Freq = get_Freq_Domain_features_of_signal(
+#                         window_hdr_X, f"hdr_X_{sensor_name}", fs
+#                     )
+#                     window_features_hdr_Y_Freq = get_Freq_Domain_features_of_signal(
+#                         window_hdr_Y, f"hdr_Y_{sensor_name}", fs
+#                     )
+#                     window_features_hdr_Z_Freq = get_Freq_Domain_features_of_signal(
+#                         window_hdr_Z, f"hdr_Z_{sensor_name}", fs
+#                     )
 
-                ## merge all
-                if not HDR:
-                    if time_only:
-                        window_features = {
-                            **window_features_accel_X_Time,
-                            **window_features_accel_Y_Time,
-                            **window_features_accel_Z_Time,
-                            **window_features_gyro_X_Time,
-                            **window_features_gyro_Y_Time,
-                            **window_features_gyro_Z_Time,
-                            **window_features_mag_X_Time,
-                            **window_features_mag_Y_Time,
-                            **window_features_mag_Z_Time,
-                        }
+#                 ## merge all
+#                 if not HDR:
+#                     if time_only:
+#                         window_features = {
+#                             **window_features_accel_X_Time,
+#                             **window_features_accel_Y_Time,
+#                             **window_features_accel_Z_Time,
+#                             **window_features_gyro_X_Time,
+#                             **window_features_gyro_Y_Time,
+#                             **window_features_gyro_Z_Time,
+#                             **window_features_mag_X_Time,
+#                             **window_features_mag_Y_Time,
+#                             **window_features_mag_Z_Time,
+#                         }
 
-                    elif freq_only:
-                        window_features = {
-                            **window_features_accel_X_Freq,
-                            **window_features_accel_Y_Freq,
-                            **window_features_accel_Z_Freq,
-                            **window_features_gyro_X_Freq,
-                            **window_features_gyro_Y_Freq,
-                            **window_features_gyro_Z_Freq,
-                            **window_features_mag_X_Freq,
-                            **window_features_mag_Y_Freq,
-                            **window_features_mag_Z_Freq,
-                        }
+#                     elif freq_only:
+#                         window_features = {
+#                             **window_features_accel_X_Freq,
+#                             **window_features_accel_Y_Freq,
+#                             **window_features_accel_Z_Freq,
+#                             **window_features_gyro_X_Freq,
+#                             **window_features_gyro_Y_Freq,
+#                             **window_features_gyro_Z_Freq,
+#                             **window_features_mag_X_Freq,
+#                             **window_features_mag_Y_Freq,
+#                             **window_features_mag_Z_Freq,
+#                         }
 
-                    else:
-                        window_features = {
-                            **window_features_accel_X_Time,
-                            **window_features_accel_Y_Time,
-                            **window_features_accel_Z_Time,
-                            **window_features_accel_X_Freq,
-                            **window_features_accel_Y_Freq,
-                            **window_features_accel_Z_Freq,
-                            **window_features_gyro_X_Time,
-                            **window_features_gyro_Y_Time,
-                            **window_features_gyro_Z_Time,
-                            **window_features_gyro_X_Freq,
-                            **window_features_gyro_Y_Freq,
-                            **window_features_gyro_Z_Freq,
-                            **window_features_mag_X_Time,
-                            **window_features_mag_Y_Time,
-                            **window_features_mag_Z_Time,
-                            **window_features_mag_X_Freq,
-                            **window_features_mag_Y_Freq,
-                            **window_features_mag_Z_Freq,
-                        }
-                if HDR:
-                    if time_only:
-                        window_features = {
-                            **window_features_accel_X_Time,
-                            **window_features_accel_Y_Time,
-                            **window_features_accel_Z_Time,
-                            **window_features_gyro_X_Time,
-                            **window_features_gyro_Y_Time,
-                            **window_features_gyro_Z_Time,
-                            **window_features_mag_X_Time,
-                            **window_features_mag_Y_Time,
-                            **window_features_mag_Z_Time,
-                            **window_features_hdr_X_Time,
-                            **window_features_hdr_Y_Time,
-                            **window_features_hdr_Z_Time,
-                        }
-                    elif freq_only:
-                        window_features = {
-                            **window_features_accel_X_Freq,
-                            **window_features_accel_Y_Freq,
-                            **window_features_accel_Z_Freq,
-                            **window_features_gyro_X_Freq,
-                            **window_features_gyro_Y_Freq,
-                            **window_features_gyro_Z_Freq,
-                            **window_features_mag_X_Freq,
-                            **window_features_mag_Y_Freq,
-                            **window_features_mag_Z_Freq,
-                            **window_features_hdr_X_Freq,
-                            **window_features_hdr_Y_Freq,
-                            **window_features_hdr_Z_Freq,
-                        }
-                    else:
-                        window_features = {
-                            **window_features_accel_X_Time,
-                            **window_features_accel_Y_Time,
-                            **window_features_accel_Z_Time,
-                            **window_features_accel_X_Freq,
-                            **window_features_accel_Y_Freq,
-                            **window_features_accel_Z_Freq,
-                            **window_features_gyro_X_Time,
-                            **window_features_gyro_Y_Time,
-                            **window_features_gyro_Z_Time,
-                            **window_features_gyro_X_Freq,
-                            **window_features_gyro_Y_Freq,
-                            **window_features_gyro_Z_Freq,
-                            **window_features_mag_X_Time,
-                            **window_features_mag_Y_Time,
-                            **window_features_mag_Z_Time,
-                            **window_features_mag_X_Freq,
-                            **window_features_mag_Y_Freq,
-                            **window_features_mag_Z_Freq,
-                            **window_features_hdr_X_Time,
-                            **window_features_hdr_Y_Time,
-                            **window_features_hdr_Z_Time,
-                            **window_features_hdr_X_Freq,
-                            **window_features_hdr_Y_Freq,
-                            **window_features_hdr_Z_Freq,
-                        }
+#                     else:
+#                         window_features = {
+#                             **window_features_accel_X_Time,
+#                             **window_features_accel_Y_Time,
+#                             **window_features_accel_Z_Time,
+#                             **window_features_accel_X_Freq,
+#                             **window_features_accel_Y_Freq,
+#                             **window_features_accel_Z_Freq,
+#                             **window_features_gyro_X_Time,
+#                             **window_features_gyro_Y_Time,
+#                             **window_features_gyro_Z_Time,
+#                             **window_features_gyro_X_Freq,
+#                             **window_features_gyro_Y_Freq,
+#                             **window_features_gyro_Z_Freq,
+#                             **window_features_mag_X_Time,
+#                             **window_features_mag_Y_Time,
+#                             **window_features_mag_Z_Time,
+#                             **window_features_mag_X_Freq,
+#                             **window_features_mag_Y_Freq,
+#                             **window_features_mag_Z_Freq,
+#                         }
+#                 if HDR:
+#                     if time_only:
+#                         window_features = {
+#                             **window_features_accel_X_Time,
+#                             **window_features_accel_Y_Time,
+#                             **window_features_accel_Z_Time,
+#                             **window_features_gyro_X_Time,
+#                             **window_features_gyro_Y_Time,
+#                             **window_features_gyro_Z_Time,
+#                             **window_features_mag_X_Time,
+#                             **window_features_mag_Y_Time,
+#                             **window_features_mag_Z_Time,
+#                             **window_features_hdr_X_Time,
+#                             **window_features_hdr_Y_Time,
+#                             **window_features_hdr_Z_Time,
+#                         }
+#                     elif freq_only:
+#                         window_features = {
+#                             **window_features_accel_X_Freq,
+#                             **window_features_accel_Y_Freq,
+#                             **window_features_accel_Z_Freq,
+#                             **window_features_gyro_X_Freq,
+#                             **window_features_gyro_Y_Freq,
+#                             **window_features_gyro_Z_Freq,
+#                             **window_features_mag_X_Freq,
+#                             **window_features_mag_Y_Freq,
+#                             **window_features_mag_Z_Freq,
+#                             **window_features_hdr_X_Freq,
+#                             **window_features_hdr_Y_Freq,
+#                             **window_features_hdr_Z_Freq,
+#                         }
+#                     else:
+#                         window_features = {
+#                             **window_features_accel_X_Time,
+#                             **window_features_accel_Y_Time,
+#                             **window_features_accel_Z_Time,
+#                             **window_features_accel_X_Freq,
+#                             **window_features_accel_Y_Freq,
+#                             **window_features_accel_Z_Freq,
+#                             **window_features_gyro_X_Time,
+#                             **window_features_gyro_Y_Time,
+#                             **window_features_gyro_Z_Time,
+#                             **window_features_gyro_X_Freq,
+#                             **window_features_gyro_Y_Freq,
+#                             **window_features_gyro_Z_Freq,
+#                             **window_features_mag_X_Time,
+#                             **window_features_mag_Y_Time,
+#                             **window_features_mag_Z_Time,
+#                             **window_features_mag_X_Freq,
+#                             **window_features_mag_Y_Freq,
+#                             **window_features_mag_Z_Freq,
+#                             **window_features_hdr_X_Time,
+#                             **window_features_hdr_Y_Time,
+#                             **window_features_hdr_Z_Time,
+#                             **window_features_hdr_X_Freq,
+#                             **window_features_hdr_Y_Freq,
+#                             **window_features_hdr_Z_Freq,
+#                         }
 
-        all_window_features.append(window_features)
+#         all_window_features.append(window_features)
 
-    feature_df = pd.DataFrame(all_window_features)
+#     feature_df = pd.DataFrame(all_window_features)
 
-    return feature_df
+#     return feature_df
 
 
 def ExtractIMU_features_repetitions_based(
@@ -601,6 +604,7 @@ def ExtractIMU_features_repetitions_based(
     # Define a list to store features for each window
     all_window_features = []
     all_window_labels = []
+    all_window_static_labels = []
 
     # Calculate the number of windows
     # rep_ids = imu_data["rep_id"].fillna("none").to_numpy()
@@ -618,14 +622,18 @@ def ExtractIMU_features_repetitions_based(
         print(f"Getting features from window {start_idx} to {end_idx}")
         print("Performing sanity check: [is label is consistent with repetition ID?]")
         print(".....")
-        if window_label in imu_data.iloc[start_idx]["rep_id"]:
-            print("Sanity passed")
-        else:
-            print(
-                f"Rep id is {imu_data.iloc[start_idx]['rep_id']}, while label is {window_label}"
-            )
-            print("Sleeping for 60 seconds")
-            time.sleep(60)
+        if window_label not in ["walking","standing","sitting","neutral_load","neutral_load_left","neutral_load_right"]:
+            print("Label is", window_label)
+            if window_label in imu_data.iloc[start_idx]["rep_id"]:
+                print("Sanity passed")
+            else:
+                print(
+                    f"Rep id is {imu_data.iloc[start_idx]['rep_id']}, while label is {window_label}"
+                )
+                print("Sleeping for 60 seconds")
+                time.sleep(60)
+        else: 
+            print("Not relevant, label is continuous...")
 
         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
         # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
@@ -706,14 +714,6 @@ def ExtractIMU_features_repetitions_based(
                         np.power(Hdr_X, 2) + np.power(Hdr_Y, 2) + np.power(Hdr_Z, 2)
                     )
 
-                # Remove gravity:
-                """
-                g_constant = np.mean(norm_acceleration)
-                # print(f"g constant: {g_constant}")
-                gravless_norm = np.subtract(norm_acceleration, g_constant)  
-                window_accel_Norm = gravless_norm[start_idx:end_idx]
-                """
-
                 window_accel_Norm = norm_accel[start_idx:end_idx]
                 window_gyro_Norm = norm_gyro[start_idx:end_idx]
                 window_mag_Norm = norm_mag[start_idx:end_idx]
@@ -783,6 +783,7 @@ def ExtractIMU_features_repetitions_based(
                 window_hdr_X = Hdr_X[start_idx:end_idx]
                 window_hdr_Y = Hdr_Y[start_idx:end_idx]
                 window_hdr_Z = Hdr_Z[start_idx:end_idx]
+
 
                 window_features_gyro_X_Time = get_Time_Domain_features_of_signal(
                     window_gyro_X, f"gyro_X_{sensor_name}"
@@ -904,6 +905,14 @@ def ExtractIMU_features_repetitions_based(
                 window_mag_Y = mag_Y[start_idx:end_idx]
                 window_mag_Z = mag_Z[start_idx:end_idx]
 
+                window_transient_score = transient_score(window_accel_X, window_accel_Y, window_accel_Z, window_gyro_X, window_gyro_Y, window_gyro_Z)
+                print(window_transient_score, "<-transient score")
+                static_marker = "static"
+                if window_transient_score > 1:
+                    static_marker = "transient"
+
+                window_static_label = f"{window_label}_{static_marker}"
+
                 if HDR:
                     window_hdr_X = Hdr_X[start_idx:end_idx]
                     window_hdr_Y = Hdr_Y[start_idx:end_idx]
@@ -920,6 +929,7 @@ def ExtractIMU_features_repetitions_based(
                     continue
                 else:
                     all_window_labels.append(window_label)
+                    all_window_static_labels.append(window_static_label)
                     # plt.plot(window_accel_X)
 
                     window_accel_X = downsample_channel(
@@ -1058,9 +1068,9 @@ def ExtractIMU_features_repetitions_based(
                             **window_features_gyro_X_Time,
                             **window_features_gyro_Y_Time,
                             **window_features_gyro_Z_Time,
-                            **window_features_mag_X_Time,
-                            **window_features_mag_Y_Time,
-                            **window_features_mag_Z_Time,
+                            # **window_features_mag_X_Time,
+                            # **window_features_mag_Y_Time,
+                            # **window_features_mag_Z_Time,
                         }
 
                     elif freq_only:
@@ -1071,9 +1081,9 @@ def ExtractIMU_features_repetitions_based(
                             **window_features_gyro_X_Freq,
                             **window_features_gyro_Y_Freq,
                             **window_features_gyro_Z_Freq,
-                            **window_features_mag_X_Freq,
-                            **window_features_mag_Y_Freq,
-                            **window_features_mag_Z_Freq,
+                            # **window_features_mag_X_Freq,
+                            # **window_features_mag_Y_Freq,
+                            # **window_features_mag_Z_Freq,
                         }
 
                     else:
@@ -1090,12 +1100,12 @@ def ExtractIMU_features_repetitions_based(
                             **window_features_gyro_X_Freq,
                             **window_features_gyro_Y_Freq,
                             **window_features_gyro_Z_Freq,
-                            **window_features_mag_X_Time,
-                            **window_features_mag_Y_Time,
-                            **window_features_mag_Z_Time,
-                            **window_features_mag_X_Freq,
-                            **window_features_mag_Y_Freq,
-                            **window_features_mag_Z_Freq,
+                            # **window_features_mag_X_Time,
+                            # **window_features_mag_Y_Time,
+                            # **window_features_mag_Z_Time,
+                            # **window_features_mag_X_Freq,
+                            # **window_features_mag_Y_Freq,
+                            # **window_features_mag_Z_Freq,
                         }
                 if HDR:
                     if time_only:
@@ -1160,4 +1170,236 @@ def ExtractIMU_features_repetitions_based(
 
     feature_df = pd.DataFrame(all_window_features)
 
-    return feature_df, all_window_labels
+    return feature_df, all_window_labels, all_window_static_labels
+
+
+def ExtractIMU_features_window_based(
+    imu_data,
+    sensor_name,
+    fs,
+    window_sec=3.5,
+    use_rep_id=True,
+    resample_signal=False,
+    target_fs=100,
+    time_only=False,
+    freq_only=False,
+):
+    if not isinstance(imu_data, pd.DataFrame):
+        imu_data = pd.read_csv(imu_data)
+
+    imu_data = imu_data.reset_index(drop=True).copy()
+
+    #print(f"BEFORE IMU data rep ids are: {imu_data['rep_id'].unique()}")
+    if resample_signal:
+        imu_data = resample_imu_dataframe(
+            imu_data,
+            original_fs=fs,
+            target_fs=target_fs,
+        )
+        fs = target_fs
+    
+    #print(f"IMU data rep ids are: {imu_data['rep_id'].unique()}")
+    containers = build_containers(imu_data, use_rep_id=use_rep_id)
+
+    windows = generate_fixed_length_windows_centered(
+        containers=containers,
+        fs=fs,
+        window_sec=window_sec,
+    )
+
+    if windows.empty:
+        print(f"No valid windows generated for sensor {sensor_name}.")
+        return pd.DataFrame(), []
+
+    accel_X = imu_data["Axl.X"]
+    accel_Y = imu_data["Axl.Y"]
+    accel_Z = imu_data["Axl.Z"]
+
+    gyro_X = imu_data["Gyr.X"]
+    gyro_Y = imu_data["Gyr.Y"]
+    gyro_Z = imu_data["Gyr.Z"]
+
+    mag_X = imu_data["Mag.X"]
+    mag_Y = imu_data["Mag.Y"]
+    mag_Z = imu_data["Mag.Z"]
+
+    all_window_features = []
+    all_window_labels = []
+    all_window_meta = []
+    all_window_static_labels = []
+
+    for _, row in windows.iterrows():
+        start_idx = int(row["start_idx"])
+        end_idx = int(row["end_idx"])
+        window_label = row["label"]
+
+
+        if use_rep_id == True:
+            all_window_meta.append(
+                {
+                    "label": row["label"],
+                    "rep_id": row["rep_id"],
+                    "container_id": row["container_id"],
+                    "window_id": row["window_id"],
+                    "start_idx": start_idx,
+                    "end_idx": end_idx,
+                }
+                )
+        else: 
+            all_window_meta.append(
+                {
+                    "label": row["label"],
+                    "container_id": row["container_id"],
+                    "window_id": row["window_id"],
+                    "start_idx": start_idx,
+                    "end_idx": end_idx,
+                }
+                )
+        all_window_labels.append(window_label)
+        #print('begine getting the windows')
+        #all_window_static_labels.append(window_static_label)
+
+        window_accel_X = accel_X[start_idx:end_idx]
+        window_accel_Y = accel_Y[start_idx:end_idx]
+        window_accel_Z = accel_Z[start_idx:end_idx]
+
+        window_gyro_X = gyro_X[start_idx:end_idx]
+        window_gyro_Y = gyro_Y[start_idx:end_idx]
+        window_gyro_Z = gyro_Z[start_idx:end_idx]
+
+        window_mag_X = mag_X[start_idx:end_idx]
+        window_mag_Y = mag_Y[start_idx:end_idx]
+        window_mag_Z = mag_Z[start_idx:end_idx]
+
+        window_transient_score = transient_score(window_accel_X, window_accel_Y, window_accel_Z, window_gyro_X, window_gyro_Y, window_gyro_Z)
+        print(window_transient_score, "<-transient score")
+        static_marker = "static"
+        if window_transient_score > 1:
+            static_marker = "transient"
+
+        window_static_label = f"{window_label}_{static_marker}"
+        all_window_static_labels.append(window_static_label)
+
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.X"][start_idx:end_idx])
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Y"][start_idx:end_idx])
+        # plt.plot(imu_data['ReconstructedTime'][start_idx:end_idx], imu_data["Axl.Z"][start_idx:end_idx])
+        # plt.title(f"{imu_data.iloc[start_idx]['label']}_{static_marker}")
+        # #plt.title(f"{imu_data.iloc[start_idx]['label']}_{imu_data.iloc[start_idx]['rep_id']}_{static_marker}")
+        # plt.show()
+
+        #print('getting time domain fts')
+        window_features_accel_X_Time = get_Time_Domain_features_of_signal(
+            window_accel_X, f"accel_X_{sensor_name}"
+        )
+        window_features_accel_Y_Time = get_Time_Domain_features_of_signal(
+            window_accel_Y, f"accel_Y_{sensor_name}"
+        )
+        window_features_accel_Z_Time = get_Time_Domain_features_of_signal(
+            window_accel_Z, f"accel_Z_{sensor_name}"
+        )
+
+        window_features_gyro_X_Time = get_Time_Domain_features_of_signal(
+            window_gyro_X, f"gyro_X_{sensor_name}"
+        )
+        window_features_gyro_Y_Time = get_Time_Domain_features_of_signal(
+            window_gyro_Y, f"gyro_Y_{sensor_name}"
+        )
+        window_features_gyro_Z_Time = get_Time_Domain_features_of_signal(
+            window_gyro_Z, f"gyro_Z_{sensor_name}"
+        )
+
+        # window_features_mag_X_Time = get_Time_Domain_features_of_signal(
+        #     window_mag_X, f"mag_X_{sensor_name}"
+        # )
+        # window_features_mag_Y_Time = get_Time_Domain_features_of_signal(
+        #     window_mag_Y, f"mag_Y_{sensor_name}"
+        # )
+        # window_features_mag_Z_Time = get_Time_Domain_features_of_signal(
+        #     window_mag_Z, f"mag_Z_{sensor_name}"
+        # )
+
+        window_features_accel_X_Freq = get_Freq_Domain_features_of_signal(
+            window_accel_X, f"accel_X_{sensor_name}", fs
+        )
+        window_features_accel_Y_Freq = get_Freq_Domain_features_of_signal(
+            window_accel_Y, f"accel_Y_{sensor_name}", fs
+        )
+        window_features_accel_Z_Freq = get_Freq_Domain_features_of_signal(
+            window_accel_Z, f"accel_Z_{sensor_name}", fs
+        )
+
+        window_features_gyro_X_Freq = get_Freq_Domain_features_of_signal(
+            window_gyro_X, f"gyro_X_{sensor_name}", fs
+        )
+        window_features_gyro_Y_Freq = get_Freq_Domain_features_of_signal(
+            window_gyro_Y, f"gyro_Y_{sensor_name}", fs
+        )
+        window_features_gyro_Z_Freq = get_Freq_Domain_features_of_signal(
+            window_gyro_Z, f"gyro_Z_{sensor_name}", fs
+        )
+
+        # window_features_mag_X_Freq = get_Freq_Domain_features_of_signal(
+        #     window_mag_X, f"mag_X_{sensor_name}", fs
+        # )
+        # window_features_mag_Y_Freq = get_Freq_Domain_features_of_signal(
+        #     window_mag_Y, f"mag_Y_{sensor_name}", fs
+        # )
+        # window_features_mag_Z_Freq = get_Freq_Domain_features_of_signal(
+        #     window_mag_Z, f"mag_Z_{sensor_name}", fs
+        # )
+
+        # compute transient score
+
+        # Merge features
+        if time_only:
+            window_features = {
+                **window_features_accel_X_Time,
+                **window_features_accel_Y_Time,
+                **window_features_accel_Z_Time,
+                **window_features_gyro_X_Time,
+                **window_features_gyro_Y_Time,
+                **window_features_gyro_Z_Time,
+                # **window_features_mag_X_Time,
+                # **window_features_mag_Y_Time,
+                # **window_features_mag_Z_Time,
+            }
+        elif freq_only:
+            window_features = {
+                **window_features_accel_X_Freq,
+                **window_features_accel_Y_Freq,
+                **window_features_accel_Z_Freq,
+                **window_features_gyro_X_Freq,
+                **window_features_gyro_Y_Freq,
+                **window_features_gyro_Z_Freq,
+                # **window_features_mag_X_Freq,
+                # **window_features_mag_Y_Freq,
+                # **window_features_mag_Z_Freq,
+            }
+        else:
+            window_features = {
+                **window_features_accel_X_Time,
+                **window_features_accel_Y_Time,
+                **window_features_accel_Z_Time,
+                **window_features_accel_X_Freq,
+                **window_features_accel_Y_Freq,
+                **window_features_accel_Z_Freq,
+                **window_features_gyro_X_Time,
+                **window_features_gyro_Y_Time,
+                **window_features_gyro_Z_Time,
+                **window_features_gyro_X_Freq,
+                **window_features_gyro_Y_Freq,
+                **window_features_gyro_Z_Freq,
+            #     **window_features_mag_X_Time,
+            #     **window_features_mag_Y_Time,
+            #     **window_features_mag_Z_Time,
+            #     **window_features_mag_X_Freq,
+            #     **window_features_mag_Y_Freq,
+            #     **window_features_mag_Z_Freq,
+            }
+
+        all_window_features.append(window_features)
+
+    feature_df = pd.DataFrame(all_window_features)
+    meta_df = pd.DataFrame(all_window_meta)
+
+    return feature_df, all_window_labels, all_window_static_labels

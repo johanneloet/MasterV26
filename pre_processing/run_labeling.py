@@ -1,5 +1,8 @@
 import labeling
 
+
+# Old file from Maria. The preprocessing pipelines used in the M.Sc. work by Johanne is highly based on this
+
 """ Labeling """
 # copy the file to label and past it inside the " "
 filepath_sensorfile = ""

@@ -14,27 +14,37 @@ def make_df(
     mitch_file_2=None,
     muse_file_3=None,
     muse_file_4=None,
+    include_mitch=True
 ):
+
     file_list = [
         muse_file_1,
         muse_file_2,
-        mitch_file_1,
-        mitch_file_2,
         muse_file_3,
         muse_file_4,
     ]
 
+    if include_mitch:
+        file_list.extend([
+            mitch_file_1,
+            mitch_file_2,
+        ])
+
     df_list = []
+
     for file in file_list:
-        if file:
-            if file.endswith(".txt"):
-                df_list.append(
-                    pd.read_csv(file, delimiter="\t", skiprows=8, decimal=",")
+        if file.endswith(".txt"):
+            df_list.append(
+                pd.read_csv(
+                    file,
+                    delimiter="\t",
+                    skiprows=8,
+                    decimal=","
                 )
-            elif file.endswith(".csv"):
-                df_list.append(pd.read_csv(file))
-        else:
-            df_list.append(None)
+            )
+
+        elif file.endswith(".csv"):
+            df_list.append(pd.read_csv(file))
 
     return df_list
 

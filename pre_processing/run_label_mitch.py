@@ -1,6 +1,8 @@
 import clean_mitch_timestamps
 import labeling
 
+# Old file from Maria. The preprocessing pipelines used in the M.Sc. work by Johanne is highly based on this
+
 """
 mitch_left = ""
 mitch_right = ""

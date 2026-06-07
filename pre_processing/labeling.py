@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 
-def detect_spikes(file_path):
+def detect_spikes(file_path, height=10000, distance=500):
     df = pd.read_csv(file_path)
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
 
     df["acc_mag"] = np.sqrt(df["Axl.X"] ** 2 + df["Axl.Y"] ** 2 + df["Axl.Z"] ** 2)
 
-    peaks, _ = find_peaks(df["acc_mag"], height=3000, distance=1000)
+    peaks, _ = find_peaks(df["acc_mag"], height=height, distance=distance)
 
     return df, peaks
 
@@ -208,6 +208,7 @@ def remove_idle(correct_label_filepath, correct_label_df=None):
         raise ValueError("The DataFrame must contain a 'label' column.")
 
     # Filter out idle samples
+    correct_label_df['label'] = correct_label_df['label'].fillna('idle')
     labeled_df = correct_label_df[correct_label_df["label"] != "idle"].copy()
 
     output_path = f"{correct_label_filepath.rstrip('.txt').rstrip('.csv')}_no_idle.csv"

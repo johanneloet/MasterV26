@@ -1,0 +1,567 @@
+import matplotlib
+matplotlib.use("Agg") # fix for runtimerror
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.lines import Line2D
+import pandas as pd
+from matplotlib.colors import LinearSegmentedColormap
+import os
+
+def save_cluster_label_heatmap(
+    df,
+    filename,
+    cluster_col="cluster",
+    label_col="label",
+    title="Cluster vs Label (%)",
+    map_label_fn=None,
+    drop_noise=False,
+    noise_label=-1,
+    min_total_label_count=0,
+    sort_labels=True,
+    sort_clusters=False,
+    annotate_pct_threshold=10,
+    annotate_count_threshold=10,
+    vmax=60,
+):
+    plot_df = df.copy()
+
+    if map_label_fn is not None:
+        plot_df[label_col] = plot_df[label_col].apply(map_label_fn)
+
+    if drop_noise:
+        plot_df = plot_df[plot_df[cluster_col] != noise_label].copy()
+
+    if min_total_label_count > 0:
+        total_counts = plot_df[label_col].value_counts()
+        rare_labels = total_counts[total_counts < min_total_label_count].index
+        plot_df[label_col] = plot_df[label_col].where(
+            ~plot_df[label_col].isin(rare_labels),
+            "other"
+        )
+
+    ct_counts = pd.crosstab(plot_df[cluster_col], plot_df[label_col])
+    ct_pct = pd.crosstab(
+        plot_df[cluster_col],
+        plot_df[label_col],
+        normalize="index"
+    ) * 100
+
+    if sort_labels:
+        label_order = ct_pct.max(axis=0).sort_values(ascending=False).index
+        ct_counts = ct_counts[label_order]
+        ct_pct = ct_pct[label_order]
+
+    if sort_clusters:
+        cluster_order = ct_counts.sum(axis=1).sort_values(ascending=False).index
+        ct_counts = ct_counts.loc[cluster_order]
+        ct_pct = ct_pct.loc[cluster_order]
+
+    cluster_sizes = ct_counts.sum(axis=1)
+    ct_pct_ext = ct_pct.copy()
+    ct_counts_ext = ct_counts.copy()
+    ct_pct_ext["TOTAL"] = 0
+    ct_counts_ext["TOTAL"] = cluster_sizes
+
+    pastel_bupu = LinearSegmentedColormap.from_list(
+        "pastel_bupu",
+        ["#f7fcfd", "#e0ecf4", "#bfd3e6", "#9ebcda", "#c994c7", "#ddcce6"]
+    )
+
+    fig_w = max(10, 0.58 * ct_pct_ext.shape[1])
+    fig_h = max(4.5, 0.8 * ct_pct_ext.shape[0])
+
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+
+    im = ax.imshow(
+        ct_pct_ext.values,
+        aspect="auto",
+        cmap=pastel_bupu,
+        vmin=0,
+        vmax=vmax,
+    )
+
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label("% inside cluster")
+
+    ax.set_xticks(np.arange(ct_pct_ext.shape[1]))
+    ax.set_xticklabels(ct_pct_ext.columns, rotation=45, ha="right", fontsize=9)
+
+    ax.set_yticks(np.arange(ct_pct_ext.shape[0]))
+    ax.set_yticklabels(ct_pct_ext.index, fontsize=9)
+
+    ax.set_xlabel("Label")
+    ax.set_ylabel("Cluster")
+    ax.set_title(title)
+
+    total_col_idx = ct_pct_ext.shape[1] - 1
+    ax.axvline(total_col_idx - 0.5, color="black", linewidth=1.5)
+
+    for i in range(ct_pct_ext.shape[0]):
+        for j in range(ct_pct_ext.shape[1]):
+            if ct_pct_ext.columns[j] == "TOTAL":
+                n = int(ct_counts_ext.iloc[i, j])
+                ax.text(
+                    j, i, f"n={n}",
+                    ha="center", va="center",
+                    fontsize=9, fontweight="bold"
+                )
+            else:
+                pct = ct_pct_ext.iloc[i, j]
+                count = int(ct_counts_ext.iloc[i, j])
+
+                if (pct >= annotate_pct_threshold) or (count >= annotate_count_threshold):
+                    ax.text(
+                        j, i,
+                        f"{pct:.0f}%\n(n={count})",
+                        ha="center", va="center",
+                        fontsize=7
+                    )
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    return ct_counts, ct_pct
+
+
+def save_cluster_label_stacked_bar(
+    df,
+    filename,
+    cluster_col="cluster",
+    label_col="label",
+    title="Cluster composition by label (%)",
+    map_label_fn=None,
+    drop_noise=False,
+    noise_label=-1,
+    min_total_label_count=0,
+    sort_labels=True,
+    sort_clusters=False,
+    figsize=None,
+):
+    plot_df = df.copy()
+
+    if map_label_fn is not None:
+        plot_df[label_col] = plot_df[label_col].apply(map_label_fn)
+
+    if drop_noise:
+        plot_df = plot_df[plot_df[cluster_col] != noise_label].copy()
+
+    if min_total_label_count > 0:
+        total_counts = plot_df[label_col].value_counts()
+        rare_labels = total_counts[total_counts < min_total_label_count].index
+        plot_df[label_col] = plot_df[label_col].where(
+            ~plot_df[label_col].isin(rare_labels),
+            "other"
+        )
+
+    # Counts and row-normalized percentages
+    ct_counts = pd.crosstab(plot_df[cluster_col], plot_df[label_col])
+    ct_pct = pd.crosstab(
+        plot_df[cluster_col],
+        plot_df[label_col],
+        normalize="index"
+    ) * 100
+
+    if sort_labels:
+        label_order = ct_pct.max(axis=0).sort_values(ascending=False).index
+        ct_counts = ct_counts[label_order]
+        ct_pct = ct_pct[label_order]
+
+    if sort_clusters:
+        cluster_order = ct_counts.sum(axis=1).sort_values(ascending=False).index
+        ct_counts = ct_counts.loc[cluster_order]
+        ct_pct = ct_pct.loc[cluster_order]
+
+    # if figsize is None:
+    #     figsize = (
+    #         max(8, 0.8 * ct_pct.shape[0]),
+    #         max(4.5, 0.45 * ct_pct.shape[1])
+    #     )
+    if figsize is None:
+        figsize = (
+            max(12, 1.2 * ct_pct.shape[0]),   # wider
+            max(4.5, 0.45 * ct_pct.shape[1])
+        )
+
+    fig, ax = plt.subplots(figsize=figsize)
+    import numpy as np
+
+    n_labels = ct_pct.shape[1]
+
+    # Option 1 (recommended): tab20 + tab20b combo
+    # muted/truncated BuPu palette
+    base_cmap = plt.cm.Blues
+
+    truncated_bupu = LinearSegmentedColormap.from_list(
+        "truncated_BuPu",
+        base_cmap(np.linspace(0.25, 0.8, 256))
+    )
+
+    colors = truncated_bupu(
+        np.linspace(0, 1, n_labels)
+    )
+
+    ct_pct.plot(
+    kind="bar",
+    stacked=True,
+    ax=ax,
+    width=0.85,
+    edgecolor="white",
+    linewidth=0.4,
+    color=colors,
+    alpha=0.5
+    )
+
+    ax.set_ylim(0, 100)
+    ax.set_xlabel("Cluster", fontsize=13)
+    ax.set_ylabel("% inside cluster", fontsize=13)
+    #ax.set_title(title)
+
+    # Add cluster sizes under x labels
+    cluster_sizes = ct_counts.sum(axis=1)
+    ax.set_xticklabels(
+        [f"{idx}\n(n={cluster_sizes.loc[idx]})" for idx in ct_pct.index],
+        rotation=0,
+        fontsize=9
+    )
+
+    # ax.legend(
+    #     title="Label",
+    #     title_fontsize=11,
+    #     loc="upper center",
+    #     bbox_to_anchor=(0.0, -0.30, 1.0, 0.1),
+    #     frameon=True,
+    #     fontsize=10,
+    #     ncol=3,
+    #     mode="expand",
+    # )
+    ax.legend(
+    title="Label",
+    title_fontsize=15,
+    fontsize=14,
+    loc="center left",
+    bbox_to_anchor=(1.02, 0.5),
+    frameon=True,
+)
+
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    return ct_counts, ct_pct
+
+def assign_cluster_color_positions(
+    df,
+    cluster_col="cluster",
+    pc_x="PC1",
+    pc_y="PC2",
+    algorithm="HDBSCAN",
+    noise_label=-1,
+):
+    alg = algorithm.lower()
+
+    non_noise = df[df[cluster_col] != noise_label]
+
+    centroids = (
+        non_noise
+        .groupby(cluster_col)[[pc_x, pc_y]]
+        .mean()
+        .rename(columns={pc_x: "x", pc_y: "y"})
+    )
+
+    color_pos = {}
+
+    # HDBSCAN: left-to-right gradient
+    if alg == "hdbscan":
+        # Rightmost cluster -> turquoise
+        right_cluster = centroids["x"].idxmax()
+        color_pos[right_cluster] = 1.00
+
+        # Lower-left cluster -> pink
+        left_lower_cluster = (
+            centroids
+            .assign(score=centroids["x"] + 0.6 * centroids["y"])
+            ["score"]
+            .idxmin()
+        )
+        color_pos[left_lower_cluster] = 0.00
+
+        remaining = [c for c in centroids.index if c not in color_pos]
+
+
+        # Any middle clusters -> yellow to green range
+        if remaining:
+            if len(remaining) == 1:
+                positions = np.linspace(0.8, 0.85, len(remaining))
+            remaining_sorted = (
+            centroids.loc[remaining]
+            .sort_values("x")
+            .index
+        )
+                
+            positions = np.linspace(0.20, 0.85, len(remaining))
+            remaining_sorted = (
+            centroids.loc[remaining]
+            .sort_values("x")
+            .index
+        )
+
+            for cl, pos in zip(remaining_sorted, positions):
+                color_pos[cl] = pos
+
+        color_pos[noise_label] = None
+        return color_pos
+
+    # k-means/agglomerative: semantic regions
+    left_cluster = centroids["x"].idxmin()
+    right_cluster = centroids["x"].idxmax()
+
+    color_pos[left_cluster] = 0.00      # pink
+    color_pos[right_cluster] = 1.00     # turquoise
+
+    remaining = [c for c in centroids.index if c not in color_pos]
+
+    if remaining:
+        upper_cluster = centroids.loc[remaining, "y"].idxmax()
+        color_pos[upper_cluster] = 0.25  # peach/pink-yellow
+        remaining.remove(upper_cluster)
+
+    for c in remaining:
+        color_pos[c] = 0.50              # yellow
+
+    return color_pos
+
+def plot_pca_clusters(
+    scores_df,
+    save_path=None,
+    pc_x="PC1",
+    pc_y="PC2",
+    cluster_col="cluster",
+    style_by=None,
+    static_values=("static",),
+    special_labels=(-1,),
+    special_label_name_map=None,
+    cmap_name="pink_yellow_turquoise",
+    figsize=(10, 10),
+    point_size=30,
+    alpha=0.75,
+    title=None,
+    algorithm="HDBSCAN"
+):
+    import os
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
+    df = scores_df.copy()
+
+    if cluster_col not in df.columns:
+        raise ValueError(f"'{cluster_col}' not found in DataFrame")
+    if pc_x not in df.columns or pc_y not in df.columns:
+        raise ValueError(f"'{pc_x}' and/or '{pc_y}' not found in DataFrame")
+
+    if style_by is not None and style_by not in df.columns:
+        raise ValueError(f"'{style_by}' not found in DataFrame")
+
+    unique_clusters = [c for c in pd.unique(df[cluster_col]) if pd.notna(c)]
+    unique_clusters = sorted(unique_clusters, key=lambda x: str(x))
+
+    special_labels = set(special_labels or [])
+    regular_clusters = [c for c in unique_clusters if c not in special_labels]
+
+    if cmap_name == "pink_yellow_turquoise":
+        from matplotlib.colors import LinearSegmentedColormap
+
+        cmap = LinearSegmentedColormap.from_list(
+            "pink_yellow_turquoise",
+            ["#ff8fc1", "#ffe680", "#63d8d1"]
+        )
+    else:
+        cmap = plt.get_cmap(cmap_name)
+
+    # colors = cmap(np.linspace(0, 1, max(len(regular_clusters), 1)))
+    # cluster_to_color = {cl: colors[i] for i, cl in enumerate(regular_clusters)}
+
+    # for cl in unique_clusters:
+    #     if cl in special_labels:
+    #         cluster_to_color[cl] = (0.75, 0.75, 0.75, 0.6)
+    
+    cluster_color_positions = assign_cluster_color_positions(
+    df,
+    cluster_col=cluster_col,
+    pc_x=pc_x,
+    pc_y=pc_y,
+    algorithm=algorithm,
+    noise_label=-1,
+    )
+
+    cluster_to_color = {}
+
+    for cl in unique_clusters:
+        pos = cluster_color_positions.get(cl, 0.50)
+
+        if pos is None or cl in special_labels:
+            cluster_to_color[cl] = (0.75, 0.75, 0.75, 0.6)
+        else:
+            cluster_to_color[cl] = cmap(pos)
+
+        if special_label_name_map is None:
+            special_label_name_map = {}
+
+        marker_list = ["o", "X", "s", "D", "^", "v", "P", "*"]
+        marker_map = None
+        style_labels = None
+        use_static_style = False
+
+    if style_by is not None:
+        # If this column should be treated as static/non-static
+        # then collapse to boolean styling
+        if len(static_values) > 0:
+            static_mask = df[style_by].isin(static_values)
+
+            # Only treat as static-style if column is not already a general multi-class style
+            # You can remove this condition if you always want static_values to apply.
+            if static_mask.any():
+                df["_style_group"] = static_mask
+                marker_map = {
+                    True: "o",
+                    False: "X",
+                }
+                style_labels = [True, False]
+                use_static_style = True
+            else:
+                style_labels = sorted(df[style_by].dropna().unique(), key=lambda x: str(x))
+                marker_map = {
+                    lab: marker_list[i % len(marker_list)] for i, lab in enumerate(style_labels)
+                }
+        else:
+            style_labels = sorted(df[style_by].dropna().unique(), key=lambda x: str(x))
+            marker_map = {
+                lab: marker_list[i % len(marker_list)] for i, lab in enumerate(style_labels)
+            }
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    for cl in unique_clusters:
+        sub = df[df[cluster_col] == cl]
+
+        if style_by is not None:
+            if use_static_style:
+                for style_lab in style_labels:
+                    subset = sub[sub["_style_group"] == style_lab]
+                    if not subset.empty:
+                        ax.scatter(
+                            subset[pc_x],
+                            subset[pc_y],
+                            color=cluster_to_color[cl],
+                            marker=marker_map[style_lab],
+                            s=point_size,
+                            alpha=alpha,
+                            label=None,
+                            rasterized=True # make pdf render more smooth
+                        )
+            else:
+                for style_lab in style_labels:
+                    subset = sub[sub[style_by] == style_lab]
+                    if not subset.empty:
+                        ax.scatter(
+                            subset[pc_x],
+                            subset[pc_y],
+                            color=cluster_to_color[cl],
+                            marker=marker_map[style_lab],
+                            s=point_size,
+                            alpha=alpha,
+                            label=None,
+                        )
+        else:
+            ax.scatter(
+                sub[pc_x],
+                sub[pc_y],
+                color=cluster_to_color[cl],
+                s=point_size,
+                alpha=alpha,
+                label=None,
+            )
+
+    cluster_handles = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="w",
+            markerfacecolor=cluster_to_color[cl],
+            markersize=20,
+            label=special_label_name_map.get(cl, str(cl)),
+        )
+        for cl in unique_clusters
+    ]
+
+    ax.legend(
+    handles=cluster_handles,
+    loc="upper center",
+    bbox_to_anchor=(0.0, -0.2, 1.0, 0.1),
+    ncol=min(len(cluster_handles), 5),
+    title="Cluster",
+    title_fontsize=27,
+    fontsize=27,
+    frameon=True,
+    mode="expand"
+)
+
+    fig.subplots_adjust(bottom=0.22)
+    #ax.add_artist(cluster_legend)
+
+    if style_by is not None:
+        if use_static_style:
+            marker_handles = [
+                Line2D(
+                    [0],
+                    [0],
+                    marker=marker_map[True],
+                    color="black",
+                    linestyle="None",
+                    markersize=8,
+                    label="Static",
+                ),
+                Line2D(
+                    [0],
+                    [0],
+                    marker=marker_map[False],
+                    color="black",
+                    linestyle="None",
+                    markersize=8,
+                    label="Non-static",
+                ),
+            ]
+        else:
+            marker_handles = [
+                Line2D(
+                    [0],
+                    [0],
+                    marker=marker_map[lab],
+                    color="black",
+                    linestyle="None",
+                    markersize=8,
+                    label=str(lab),
+                )
+                for lab in style_labels
+            ]
+
+        # ax.legend(
+        #     handles=marker_handles,
+        #     bbox_to_anchor=(1.02, 0.55),
+        #     loc="upper left",
+        #     title=style_by,
+        # )
+
+    #ax.set_title(title or f"PCA colored by {cluster_col}")
+    ax.set_xlabel(pc_x, fontsize=20)
+    ax.set_ylabel(pc_y, fontsize=20)
+    plt.tight_layout()
+
+    if save_path is not None:
+        directory = os.path.dirname(save_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+        plt.savefig(save_path, bbox_inches="tight")

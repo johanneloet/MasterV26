@@ -139,6 +139,62 @@ def get_test_file_paths():
             "left_fsr": r"C:\Users\Bruker\Data_msc26_prelim\prelim_2\left_sole_with_rep_ids_cleaned.csv",
             "right_fsr": r"C:\Users\Bruker\Data_msc26_prelim\prelim_2\right_sole_with_rep_ids_cleaned.csv",
         },
+        "prelim_3": {
+            "left_arm": r"C:\Users\Bruker\Data_msc26_prelim\prelim_3\left_arm_with_rep_ids_cleaned.csv",
+            "right_arm": r"C:\Users\Bruker\Data_msc26_prelim\prelim_3\right_arm_with_rep_ids_cleaned.csv",
+            "upper_back": r"C:\Users\Bruker\Data_msc26_prelim\prelim_3\upper_back_with_rep_ids_cleaned.csv",
+            "lower_back": r"C:\Users\Bruker\Data_msc26_prelim\prelim_3\lower_back_with_rep_ids_cleaned.csv",
+            "left_fsr": r"C:\Users\Bruker\Data_msc26_prelim\prelim_3\left_sole_with_rep_ids_cleaned.csv",
+            "right_fsr": r"C:\Users\Bruker\Data_msc26_prelim\prelim_3\right_sole_with_rep_ids_cleaned.csv",
+        },
+        "prelim_4": {
+            "left_arm": r"C:\Users\Bruker\Data_msc26_prelim\prelim_4\left_arm_with_rep_ids_cleaned.csv",
+            "right_arm": r"C:\Users\Bruker\Data_msc26_prelim\prelim_4\right_arm_with_rep_ids_cleaned.csv",
+            "upper_back": r"C:\Users\Bruker\Data_msc26_prelim\prelim_4\upper_back_with_rep_ids_cleaned.csv",
+            "lower_back": r"C:\Users\Bruker\Data_msc26_prelim\prelim_4\lower_back_with_rep_ids_cleaned.csv",
+            "left_fsr": r"C:\Users\Bruker\Data_msc26_prelim\prelim_4\left_sole_with_rep_ids_cleaned.csv",
+            "right_fsr": r"C:\Users\Bruker\Data_msc26_prelim\prelim_4\right_sole_with_rep_ids_cleaned.csv",
+        },
+        "prelim_5": {
+            "left_arm": r"C:\Users\Bruker\Data_msc26_prelim\prelim_5\left_arm_with_rep_ids_cleaned.csv",
+            "right_arm": r"C:\Users\Bruker\Data_msc26_prelim\prelim_5\right_arm_with_rep_ids_cleaned.csv",
+            "upper_back": r"C:\Users\Bruker\Data_msc26_prelim\prelim_5\upper_back_with_rep_ids_cleaned.csv",
+            "lower_back": r"C:\Users\Bruker\Data_msc26_prelim\prelim_5\lower_back_with_rep_ids_cleaned.csv",
+            "left_fsr": r"C:\Users\Bruker\Data_msc26_prelim\prelim_5\left_sole_with_rep_ids_cleaned.csv",
+            "right_fsr": r"C:\Users\Bruker\Data_msc26_prelim\prelim_5\right_sole_with_rep_ids_cleaned.csv",
+        },
+        "akso_1": {
+            "left_arm": r"C:\Users\Bruker\Data_msc26_prelim\akso_1\left_arm_with_rep_ids_cleaned.csv",
+            "right_arm": r"C:\Users\Bruker\Data_msc26_prelim\akso_1\right_arm_with_rep_ids_cleaned.csv",
+            "upper_back": r"C:\Users\Bruker\Data_msc26_prelim\akso_1\upper_back_with_rep_ids_cleaned.csv",
+            "lower_back": r"C:\Users\Bruker\Data_msc26_prelim\akso_1\lower_back_with_rep_ids_cleaned.csv",
+            "left_fsr": r"C:\Users\Bruker\Data_msc26_prelim\akso_1\left_sole_with_rep_ids_cleaned.csv",
+            "right_fsr": r"C:\Users\Bruker\Data_msc26_prelim\akso_1\right_sole_with_rep_ids_cleaned.csv",
+        },
+        "akso_2": {
+            "left_arm": r"C:\Users\Bruker\Data_msc26_prelim\akso_2\left_arm_with_rep_ids_cleaned.csv",
+            "right_arm": r"C:\Users\Bruker\Data_msc26_prelim\akso_2\right_arm_with_rep_ids_cleaned.csv",
+            "upper_back": r"C:\Users\Bruker\Data_msc26_prelim\akso_2\upper_back_with_rep_ids_cleaned.csv",
+            "lower_back": r"C:\Users\Bruker\Data_msc26_prelim\akso_2\lower_back_with_rep_ids_cleaned.csv",
+            "left_fsr": r"C:\Users\Bruker\Data_msc26_prelim\akso_2\left_sole_with_rep_ids_cleaned.csv",
+            "right_fsr": r"C:\Users\Bruker\Data_msc26_prelim\akso_2\right_sole_with_rep_ids_cleaned.csv",
+        },
+        "akso_3": {
+            "left_arm": r"C:\Users\Bruker\Data_msc26_prelim\akso_3\left_arm_with_rep_ids_cleaned.csv",
+            "right_arm": r"C:\Users\Bruker\Data_msc26_prelim\akso_3\right_arm_with_rep_ids_cleaned.csv",
+            "upper_back": r"C:\Users\Bruker\Data_msc26_prelim\akso_3\upper_back_with_rep_ids_cleaned.csv",
+            "lower_back": r"C:\Users\Bruker\Data_msc26_prelim\akso_3\lower_back_with_rep_ids_cleaned.csv",
+            "left_fsr": r"C:\Users\Bruker\Data_msc26_prelim\akso_3\left_sole_with_rep_ids_cleaned.csv",
+            "right_fsr": r"C:\Users\Bruker\Data_msc26_prelim\akso_3\right_sole_with_rep_ids_cleaned.csv",
+        },
+        "akso_4": {
+            "left_arm": r"C:\Users\Bruker\Data_msc26_prelim\akso_4\left_arm_with_rep_ids_cleaned.csv",
+            "right_arm": r"C:\Users\Bruker\Data_msc26_prelim\akso_4\right_arm_with_rep_ids_cleaned.csv",
+            "upper_back": r"C:\Users\Bruker\Data_msc26_prelim\akso_4\upper_back_with_rep_ids_cleaned.csv",
+            "lower_back": r"C:\Users\Bruker\Data_msc26_prelim\akso_4\lower_back_with_rep_ids_cleaned.csv",
+            "left_fsr": r"C:\Users\Bruker\Data_msc26_prelim\akso_4\left_sole_with_rep_ids_cleaned.csv",
+            "right_fsr": r"C:\Users\Bruker\Data_msc26_prelim\akso_4\right_sole_with_rep_ids_cleaned.csv",
+        },
     }
     return tests
 
@@ -167,6 +223,13 @@ def get_test_folder_paths():
         "test_20": r"C:\Users\Bruker\Master25_code\Master25\Data\sensor_test_files_johanne\test_20",
         "prelim_1": r"C:\Users\Bruker\Data_msc26_prelim\prelim_1",
         "prelim_2": r"C:\Users\Bruker\Data_msc26_prelim\prelim_2",
+        "prelim_3": r"C:\Users\Bruker\Data_msc26_prelim\prelim_3",
+        "prelim_4": r"C:\Users\Bruker\Data_msc26_prelim\prelim_4",
+        "prelim_5": r"C:\Users\Bruker\Data_msc26_prelim\prelim_5",
+        "akso_1": r"C:\Users\Bruker\Data_msc26_prelim\akso_1",
+        "akso_2": r"C:\Users\Bruker\Data_msc26_prelim\akso_2",
+        "akso_3": r"C:\Users\Bruker\Data_msc26_prelim\akso_3",
+        "akso_4": r"C:\Users\Bruker\Data_msc26_prelim\akso_4",
     }
     return folders
 

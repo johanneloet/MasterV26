@@ -19,39 +19,10 @@ def plot_activity_accelerations_peaks_and_magnitude(
     height=1100,
     distance=1100,
     peak_indices=None,
+    plot_separation_lines=False,
     colors=None,
     figsize=(12, 6),
 ):
-    """
-    Plot acceleration components (X, Y, Z), magnitude, and detected peaks
-    for a given activity label from an IMU DataFrame.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        DataFrame with accelerometer data and a 'label' column and a 'ReconstructedTime' column.
-    activity_label : str
-        The movement label to filter (e.g., 'hand_up_back').
-    height : float, optional
-        Minimum height (in mg) for peak detection.
-    distance : int, optional
-        Minimum distance (in samples) between peaks.
-    peak_indices : array-like, optional
-        Custom peak indices to plot. If None, peaks will be auto-detected.
-    colors : dict, optional
-        Color dictionary for the curves.
-    figsize : tuple, optional
-        Figure size for the plot.
-
-    Returns
-    -------
-    subset : pandas.DataFrame
-        Subset of the data corresponding to the selected label.
-    peak_indices : np.ndarray
-        Indices of the plotted peaks.
-    properties : dict or None
-        Properties from scipy.signal.find_peaks if peaks were auto-detected.
-    """
 
     if colors is None:
         colors = {
@@ -123,8 +94,31 @@ def plot_activity_accelerations_peaks_and_magnitude(
         "rx",
         label="Peaks",
     )
+    
+        # Plot separation lines between even and odd peaks
+    if plot_separation_lines:
+        separation_times = []
 
-    # --- Style ---
+        for i in range(0, len(local_peak_indices) - 1, 2):
+            even_peak = local_peak_indices[i]
+            odd_peak = local_peak_indices[i + 1]
+
+            t_even = subset["ReconstructedTime"].iloc[even_peak]
+            t_odd = subset["ReconstructedTime"].iloc[odd_peak]
+
+            midpoint_time = (t_even + t_odd) / 2
+            separation_times.append(midpoint_time)
+
+            plt.axvline(
+                midpoint_time,
+                color="black",
+                linestyle="--",
+                linewidth=1,
+                alpha=0.7,
+                label="Repetition boundary" if i == 0 else None,
+            )
+
+    # Style
     plt.title(
         f"Acceleration Components over Time ({activity_label})",
         fontsize=16,
@@ -148,7 +142,7 @@ def get_start_stop_times_from_peaks(
     activity_name,
     num_reps=6,
     time_col="ReconstructedTime",
-    L_R_alternate=False,
+    side_mode=None,  # None, "alternate", "sequential"
 ):
     peaks = np.sort(np.asarray(peaks, dtype=int))
     if len(peaks) < 2:
@@ -156,24 +150,41 @@ def get_start_stop_times_from_peaks(
 
     times = df[time_col].to_numpy()
 
+    if len(peaks) < num_reps + 1:
+        raise ValueError("Not enough peaks for the requested number of reps.")
+
     start_stop_times_reps = {}
     intervals = []
-    assert len(peaks) >= num_reps
+
     for i in range(num_reps):
         rep_start_idx = peaks[i]
         rep_stop_idx = peaks[i + 1]
         rep_start_time = times[rep_start_idx]
         rep_stop_time = times[rep_stop_idx]
-        if L_R_alternate == True:
-            # IMPORTANT ASSUMPTION: the ordering during data collection was left first, then right. We can then assume that every odd repetition number is a left rep
-            # and any even rep number is a right side rep. This was protocol during the prelim data collection. Any deviations will be noted in the thesis.
-            # Therefore read data collection notes thoroughly!
-            if (i + 1) % 2 == 0:
-                rep_name = f"{activity_name}_right_{i+1}"
+
+        rep_number = i + 1
+
+        # Side variations
+        # Important assumption!! Data is collected left first then right
+        if side_mode == "alternate":
+            # L, R, L, R...
+            if rep_number % 2 == 0:
+                side = "left"
             else:
-                rep_name = f"{activity_name}_left_{i+1}"
+                side = "right"
+            rep_name = f"{activity_name}_{side}_{rep_number}"
+
+        elif side_mode == "sequential":
+            # First half left, second half right
+            half = num_reps // 2
+            if i < half:
+                side = "left"
+            else:
+                side = "right"
+            rep_name = f"{activity_name}_{side}_{rep_number}"
+
         else:
-            rep_name = f"{activity_name}_{i+1}"
+            rep_name = f"{activity_name}_{rep_number}"
 
         start_stop_times_reps[rep_name] = (rep_start_time, rep_stop_time)
         intervals.append((rep_name, rep_start_time, rep_stop_time))
@@ -181,6 +192,7 @@ def get_start_stop_times_from_peaks(
     rep_intervals_df = pd.DataFrame(
         intervals, columns=["rep_id", "start_time", "stop_time"]
     )
+
     return start_stop_times_reps, rep_intervals_df
 
 
@@ -195,12 +207,18 @@ def assign_rep_ids(
         "neutral_load_left",
         "neutral_load_right",
     ],
+    save_files = True
 ):
     valid_dfs = {}
     skipped = []
 
     # Validate rep_id presence
     for name, df in sensor_dfs.items():
+        if df is None:
+            print(f"⚠️ WARNING: '{name}' skipped (dataframe is None)")
+            skipped.append(name)
+            continue
+    
         if "rep_id" not in df.columns:
             print(f"⚠️ WARNING: '{name}' skipped (missing 'rep_id' column)")
             skipped.append(name)
@@ -272,10 +290,10 @@ def assign_rep_ids(
                     df.loc[mask, "rep_id"] = rep_id
 
             print(f"✅ Assigned rep_ids for {activity}")
-
-    for name, df in valid_dfs.items():
-        save_path = output_dir / f"{name}_with_rep_ids.csv"
-        df.to_csv(save_path, index=False)
-        print(f"💾 Saved: {save_path}")
+    if save_files == True:
+        for name, df in valid_dfs.items():
+            save_path = output_dir / f"{name}_with_rep_ids.csv"
+            df.to_csv(save_path, index=False)
+            print(f"💾 Saved: {save_path}")
 
     return sensor_dfs
