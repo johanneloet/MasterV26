@@ -1,7 +1,7 @@
 # MasterV26
 Code used and developed for my master's thesis, spring semster of 2026. The codebase includes code for preprocesing, labeling, extracting features from, analyzing and training ML models on a dataset consisting of IMU and pressure sensing insoles movement data. Data files are not provided here. Some code is derived either from the previous work of Maria Ulseth Sylte (https://github.com/mariausy/Master_25) and Alba Casanica (https://github.com/AlbaCasanica/CT), as well as example code from my supervisor Roya Doshmanziari. This is noted in comments at the top of the files for the relevant files.
 
-Parts of the code were developed with assistance from ChatGPT-5. AI-generated suggestions were used primarily for implementation support and plotting and were thoroughly reviewed. Unless otherwise stated, the overall methodology, algorithms, experimental design, and research contributions are my own.
+Parts of the code were developed with assistance from ChatGPT-5. In most cases, AI assistance was limited to implementation support, debugging and plotting. In one instance, the definition of the transient score, chatGPT also contributed to the metric development. This is explicitly stated in the corresponding file. 
 
 ## Getting started with the codebase
 Running the program requires a working installation of Python 3 as well as the Python packages listed in requirements.txt. Intall these (for instance in a virtual environment):
