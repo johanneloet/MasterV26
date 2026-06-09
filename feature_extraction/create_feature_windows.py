@@ -14,6 +14,7 @@ def build_boundaries(
         "neutral_load_right",
        # "drag" # special handle for prelim_8 DO NOT INCLUDE OTHERWISE
     ),
+    # this function was created with the aid of chatgpt
     fixed_len=2800,
     drop_incomplete=True,
 ):
@@ -64,6 +65,7 @@ def drop_last_for_label(df, labels, static_labels, label_value):
     and the corresponding label from labels.
     Returns updated (df, labels) with correct alignment.
     """
+    # this function was created with the aid of chatgpt, though the ide of the functionality was the author's
     if not isinstance(labels, list):
         labels = list(labels)
 
