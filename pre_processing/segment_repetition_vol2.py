@@ -1,7 +1,7 @@
 """
 File purpose: segmentation of repetitions based on manual observations in acceleration plots.
 
-This file is written by Johanne, though the approach is inspired by Maria's repetition segmentation approach.
+This file is written by Johanne, with the aid of chatgpt, though the approach is inspired by Maria's repetition segmentation approach.
 """
 
 # Imports

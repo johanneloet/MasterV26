@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
+# This file is reused directly from Maria (Sylte, 2025)
 
 def detect_spikes(file_path, height=10000, distance=500):
     df = pd.read_csv(file_path)

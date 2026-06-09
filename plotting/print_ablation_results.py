@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 
+# this script was created with the aid of chatgpt
+
 df = pd.read_csv("./results/loocv_summary_results_sensor_ablation_final_final.csv")
 
 dc_order = ["DC1", "DC2", "DC3", "DC4", "DC5", "DC6", "DC7"]

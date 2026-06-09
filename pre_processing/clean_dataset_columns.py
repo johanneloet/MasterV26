@@ -1,5 +1,7 @@
 """
 Code to remove undesired columns such as 'timestamp' and 'unnamed'. Also rename the Fsr-columns to the corrects ones.
+
+Developed with the assistance of chatgpt.
 """
 
 from feature_extraction.get_paths import get_test_file_paths
@@ -81,7 +83,7 @@ def clean_and_rename_columns(
 
     for sensor, path in sensor_paths.items():
         if path is None:
-            print(f"⚠️ No file provided for {sensor}, skipping...")
+            print(f"No file provided for {sensor}, skipping...")
             continue
 
         # Load CSV
@@ -119,4 +121,4 @@ if __name__ == "__main__":
                     continue
                 cleaned_path = orig_path.replace(".csv", "_cleaned.csv")
                 df.to_csv(cleaned_path, index=False)
-                print(f"💾 Saved cleaned {sensor} to {cleaned_path}")
+                print(f"Saved cleaned {sensor} to {cleaned_path}")

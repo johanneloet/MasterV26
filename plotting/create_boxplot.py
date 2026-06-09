@@ -5,6 +5,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 
+# this script was created with the aid of chatgpt
+
 def build_participant_df(
     csv_path="./results/loocv_summary_results_sensor_ablation.csv"
 ):

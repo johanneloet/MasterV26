@@ -11,105 +11,8 @@ from feature_extraction.get_paths import get_test_folder_paths
 from utils import drop_label
 
 from plotting.cluster_plots import save_cluster_label_heatmap, plot_pca_clusters
-
-
-def plot_dbscan_k_distance(
-    right_arm=True,
-    left_arm=True,
-    lower_back=True,
-    upper_back=True,
-    left_fsr=True,
-    right_fsr=True,
-    expanded_fsr=False,
-    prefixes=["prelim"],
-    feature_mode="Window",
-    k=20,
-    use_pca=True,
-    n_pca=0.95,
-):
-    from sklearn.neighbors import NearestNeighbors
-    import matplotlib.pyplot as plt
-
-    test_folder_dict = get_test_folder_paths()
-
-    sensor_flags = {
-        "right_arm": right_arm,
-        "left_arm": left_arm,
-        "lower_back": lower_back,
-        "upper_back": upper_back,
-        "left_fsr": left_fsr,
-        "right_fsr": right_fsr,
-    }
-    sensor_order = [
-        "right_arm",
-        "left_arm",
-        "lower_back",
-        "upper_back",
-        "left_fsr",
-        "right_fsr",
-    ]
-    sensor_config = [s for s in sensor_order if sensor_flags[s]]
-    sensor_combo_scenario = "_".join(sensor_config)
-
-    include_csvs = []
-    for test_id, folder_path in test_folder_dict.items():
-        if test_id.split("_")[0] in prefixes:
-            feature_filename = (
-                f"Features_{feature_mode}_{test_id}_expanded{expanded_fsr}_{sensor_combo_scenario}.csv"
-            )
-            include_csvs.append(Path(folder_path) / feature_filename)
-
-    feature_dfs = [pd.read_csv(p) for p in include_csvs]
-    if not feature_dfs:
-        raise ValueError("No feature files found for the requested configuration.")
-
-    combined_features = pd.concat(feature_dfs, ignore_index=True)
-
-    metadata_cols = [
-        "label",
-        "prefix",
-        "test_id",
-        "rep_id",
-        "container_id",
-        "window_id",
-        "start_idx",
-        "end_idx",
-        "rep_id.1"
-    ]
-
-    X = combined_features.drop(
-        columns=[c for c in metadata_cols if c in combined_features.columns],
-        errors="ignore",
-    )
-    X = X.select_dtypes(include="number")
-
-    mask = ~X.isna().any(axis=1)
-    X = X.loc[mask].reset_index(drop=True)
-
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    if use_pca:
-        pca = PCA(n_components=n_pca)
-        X_model = pca.fit_transform(X_scaled)
-    else:
-        X_model = X_scaled
-
-    nbrs = NearestNeighbors(n_neighbors=k)
-    nbrs.fit(X_model)
-    distances, _ = nbrs.kneighbors(X_model)
-
-    k_distances = np.sort(distances[:, -1])
-
-    plt.figure(figsize=(7, 4))
-    plt.plot(k_distances)
-    plt.xlabel("Points sorted")
-    plt.ylabel(f"{k}-NN distance")
-    plt.title("DBSCAN k-distance plot")
-    plt.tight_layout()
-    plt.show()
-
-    return k_distances
+# the setup of the clustering algorithm was aided by chatgpt. hyperparameter tuning was done manually.
+# the actual analysis was run from the file label_grouping_analysis.py
 
 def run_dbscan_on_dataset(
     right_arm=True,
@@ -271,22 +174,7 @@ def run_dbscan_on_dataset(
     return out_df, db, pca, scaler
 
 if __name__ == "__main__":
-    plot_dbscan_k_distance(
-        right_arm=True,
-        left_arm=True,
-        lower_back=True,
-        upper_back=True,
-        left_fsr=True,
-        right_fsr=True,
-        expanded_fsr=True,
-        prefixes=["aksowork", "aksoprotocol", "prelim"],
-        feature_mode="Window",
-        k=20,
-        use_pca=True,
-        n_pca=0.95,
-    )
 
- 
     dbscan_df, db_model, pca_model, scaler = run_dbscan_on_dataset(
         right_arm=True,
         left_arm=True,

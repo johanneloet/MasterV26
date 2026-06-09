@@ -3,6 +3,7 @@ import numpy as np
 
 from utils import get_imu_cols, get_fsr_cols
 
+# plotting functions made withthe aid of chatgpt.
 
 def get_time_axis(df, mode="Timestamp"):
     """

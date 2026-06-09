@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 
+# File originally from Maria and reused by Johanne in the M.Sc. and specialization project.
 
 def check_irregular_timejums(cleaned_path):
     df = pd.read_csv(cleaned_path, sep=",")

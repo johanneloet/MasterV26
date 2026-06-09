@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 
+# File originally from Maria and reused by Johanne in the specialization project and M.Sc.
+
 muse_file_1 = ""
 muse_file_2 = ""
 mitch_file_1 = ""

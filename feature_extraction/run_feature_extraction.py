@@ -396,7 +396,7 @@ def run_feature_extraction_for_multiple_tests(
     stop_if_one_fails: bool = True,
     IMU_sampling_rate: int = 800,
 
-    # ⭐ NEW PARAMETERS
+    # NEW PARAMETERS
     mode: str = "Window",          # "Repetition" or "Window"
     resample_signal: bool = True,
     target_fs: int = 100,
@@ -504,7 +504,7 @@ def run_feature_extraction_for_multiple_tests(
                 expanded_fsr=expanded_fsr,
                 IMU_sampling_rates=IMU_sampling_rate,
 
-                # ⭐ NEW PIPELINE OPTIONS
+                #NEW PIPELINE OPTIONS
                 mode=mode,
                 resample_IMU=resample_signal,
                 target_resampling_rate=target_fs,

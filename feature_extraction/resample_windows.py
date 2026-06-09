@@ -9,22 +9,7 @@ def downsample_channel(df_channel, target_num_samples):
     Downsample a single IMU channel (DataFrame or Series) to a fixed number of samples.
     Only performs downsampling (raises error if input is shorter than target length).
 
-    Parameters
-    ----------
-    df_channel : pd.Series or pd.DataFrame
-        Single IMU channel (numeric). Example: imu_data["accel_X"] or imu_data[["accel_X"]].
-    target_len : int
-        Desired number of samples after downsampling (must be smaller than input length).
-
-    Returns
-    -------
-    pd.Series
-        Downsampled channel of length `target_len`.
-
-    Raises
-    ------
-    ValueError
-        If the input has fewer samples than `target_len`.
+    Chatgpt aided the development of this function.
     """
     # Extract the column
     if isinstance(df_channel, pd.DataFrame):
@@ -62,7 +47,7 @@ def downsample_channel(df_channel, target_num_samples):
 
     y = signal.resample_poly(x, up, down, padtype="edge")
 
-    # Ensure exact length
+    # exact length
     if len(y) > target_num_samples:
         y = y[:target_num_samples]
     elif len(y) < target_num_samples:

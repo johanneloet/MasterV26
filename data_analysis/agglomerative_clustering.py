@@ -11,7 +11,8 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 
 from utils import drop_label
 from plotting.cluster_plots import save_cluster_label_heatmap
-
+# setup of the clustering algorithm was aided by chatgpt
+# the actual analysis was run in the label_grouping_analysis.py file
 
 def run_agglomerative_on_dataset(
     right_arm=True,

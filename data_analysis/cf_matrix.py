@@ -2,7 +2,8 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
-
+# This file is inspired by plotting code from Roya
+# some adjustaments to the plots was aided by chatgpt
 
 def make_confusion_matrix(
     cf,
@@ -23,7 +24,6 @@ def make_confusion_matrix(
     total = cf.sum()
     diag = np.diag(cf)
 
-    # ---- METRICS (for your layout: rows=pred, cols=true) ----
     precision = np.divide(
         diag, row_sums, out=np.zeros_like(row_sums, float), where=row_sums != 0
     )

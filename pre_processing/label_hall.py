@@ -1,24 +1,9 @@
 import os
 import pandas as pd
 
+#function for adding  hall label to a hall_labels_start_stop.csv file
+
 def add_label(data_dir, label, start_time, end_time, filename="hall_labels_start_stop.csv"):
-    """
-    Create or append to a label CSV.
-
-    Parameters
-    ----------
-    data_dir : str or Path
-        Directory where the label file should live
-    label : str
-        Name of the label/activity
-    start_time : float
-        Start time in seconds
-    end_time : float
-        End time in seconds
-    filename : str
-        Name of the label file
-    """
-
     filepath = os.path.join(data_dir, filename)
 
     # Create file if it doesn't exist

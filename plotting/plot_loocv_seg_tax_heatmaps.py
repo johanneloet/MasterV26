@@ -4,6 +4,10 @@ import seaborn as sns
 import numpy as np
 import matplotlib.colors as mcolors
 import pandas as pd
+# this script was written with the aid of chatgpt. The rules defined as selection critera for "best segmenation and taxonomy"
+# are my own ideas.
+
+
 def select_optimal_taxonomy_cell(heatmap_values, dataset_scenario):
     """
     Selects optimal segmentation + taxonomy using detail-aware taxonomy rules.

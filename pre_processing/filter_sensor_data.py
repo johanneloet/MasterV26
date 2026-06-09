@@ -1,6 +1,7 @@
 from scipy.signal import medfilt
 import pandas as pd
 
+# File originally from Maria and reused by Johanne in the specialization project and M.Sc.
 
 def median_filter_medfilt(filepath_no_idle, columns, kernel_size=3, df=None):
     if df is None:

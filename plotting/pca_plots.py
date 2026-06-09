@@ -6,6 +6,7 @@ from matplotlib.lines import Line2D
 
 
 # Code developed during the preliminary PCA to study where the activities fall in different PC spaces.
+# The code was developed with the aid of chatgpt
 
 
 def plot_pca_scores(

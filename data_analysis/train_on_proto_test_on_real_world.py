@@ -27,6 +27,8 @@ from utils import map_taxonomy_candidate_1, map_taxonomy_candidate_2, map_taxono
 
 # Run  this for DC4, DC5 and DC7 with the fullest sensor combination per dataset
 
+# heavily based on the loocv.py code, just has some additional handles
+
 def loocv_pca_train_proto_test_real(
     clf_name: str = "SVC",
     label_mapping: dict | None = None,
@@ -210,9 +212,8 @@ def loocv_pca_train_proto_test_real(
         
         print(Y_test.value_counts())
         
-        # -------------------------
+
         # Sanity checks
-        # -------------------------
         assert len(X_train) == len(Y_train), f"Train mismatch: {len(X_train)} vs {len(Y_train)}"
         assert len(X_test) == len(Y_test), f"Test mismatch: {len(X_test)} vs {len(Y_test)}"
     
