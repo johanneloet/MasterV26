@@ -1,6 +1,8 @@
 # MasterV26
 Code used and developed for my master's thesis, spring semster of 2026. The codebase includes code for preprocesing, labeling, extracting features from, analyzing and training ML models on a dataset consisting of IMU and pressure sensing insoles movement data. Data files are not provided here. Some code is derived either from the previous work of Maria Ulseth Sylte (https://github.com/mariausy/Master_25) and Alba Casanica (https://github.com/AlbaCasanica/CT), as well as example code from my supervisor Roya Doshmanziari. This is noted in comments at the top of the files for the relevant files.
 
+Some of the code was generated wth the aid of chatGPT-5, though the main ideas and algorithms are my own unless otherwise stated.
+
 ## Getting started with the codebase
 Running the program requires a working installation of Python 3 as well as the Python packages listed in requirements.txt. Intall these (for instance in a virtual environment):
 At the base directory (MasterV26) create a virtual environment (for instance named .venv) from terminal.
